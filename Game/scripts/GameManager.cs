@@ -39,6 +39,7 @@ public partial class GameManager : Node3D
         AddChild(_hud);
         _hud.HopRequested += dir => _player.TryHop(dir.X, dir.Y);
         _hud.RetryPressed += Restart;
+        _hud.MenuPressed += () => GetTree().ChangeSceneToFile("res://StageSelect.tscn");
         _grail.HealthChanged += _hud.SetHealth;
         _hud.SetHealth(_grail.Hp, _grail.MaxHp); // 초기값(연결 전 _Ready emit 보정)
     }

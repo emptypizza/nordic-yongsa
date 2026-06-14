@@ -7,6 +7,7 @@ public partial class Hud : CanvasLayer
 {
     public event Action<Vector2I> HopRequested;
     public event Action RetryPressed;
+    public event Action MenuPressed;
 
     private ProgressBar _hpBar;
     private Label _hpLabel;
@@ -52,10 +53,16 @@ public partial class Hud : CanvasLayer
         _resultPanel.AddChild(_resultLabel);
 
         var retry = new Button { Text = "RETRY" };
-        retry.CustomMinimumSize = new Vector2(140, 44);
-        retry.Position = new Vector2(90, 90);
+        retry.CustomMinimumSize = new Vector2(120, 40);
+        retry.Position = new Vector2(24, 96);
         retry.Pressed += () => RetryPressed?.Invoke();
         _resultPanel.AddChild(retry);
+
+        var menu = new Button { Text = "STAGE SELECT" };
+        menu.CustomMinimumSize = new Vector2(150, 40);
+        menu.Position = new Vector2(150, 96);
+        menu.Pressed += () => MenuPressed?.Invoke();
+        _resultPanel.AddChild(menu);
     }
 
     private void BuildDpad()

@@ -51,18 +51,21 @@ created: 2026-06-14
 ```
 Game/
   project.godot
+  Title.tscn             # 루트 CanvasLayer + TitleScreen 코드-빌드 UI
+  StageSelect.tscn       # 루트 CanvasLayer + StageSelect 코드-빌드 UI
   Main.tscn              # 루트 Node3D + 카메라/조명/보드/UI 조립
-  scenes/
-    Grail.tscn  Player.tscn  Enemy.tscn
   scripts/
+    TitleScreen.cs       # START → StageSelect.tscn
+    StageSelect.cs       # STAGE 1 → Main.tscn
     GameManager.cs       # 상태(Playing/Win/Lose), 적 스폰, HP 집계, 재시작
     GridUtil.cs          # 그리드↔월드 변환, 경계
     Grail.cs             # 연속 전진, HP, 무적, Win/Death 신호
     Player.cs            # 4방향 grid hop(키 입력 트리거), 넉백 충돌
     Enemy.cs             # 연속 직각 그리드 추적, 충돌 판정
-    Hud.cs               # HP 바, STAGE 라벨, 결과 화면(Retry), (모바일) 가상 d-pad
+    Hud.cs               # HP 바, STAGE 라벨, 결과 화면(Retry/Stage Select), (모바일) 가상 d-pad
 ```
 
+- 화면 흐름: `Title` → `Stage Select`(스테이지 1개) → `Play` → 결과(`ARRIVED!`/`MISSION FAILED`) 패널에서 `RETRY`(같은 판 재시작) 또는 `STAGE SELECT`(선택 화면 복귀). 시작 씬은 `res://Title.tscn`이며, 화면 스크립트는 씬에 UI 자식을 저장하지 않고 `_Ready()`에서 코드로 빌드한다. 메뉴 화면(`Title`/`StageSelect`)은 `Hud`와 동일하게 `CanvasLayer` 루트 아래 중앙 정렬 `Control` 자식을 둔다.
 - 적 스폰: 성배(마차)에서 최소 10칸(링 10~16칸) 떨어진 주위 그리드 레인에 스냅해 생성. 동시 적 수는 `GameManager`가 제한하고, 기본 스폰 간격은 2.5초로 둔다.
 - 입력: Godot `InputMap`에 `move_left/right/up/down`(WASD + 방향키) 정의 → **누름 이벤트로 1타일 hop 트리거**(이동 중에는 입력 버퍼/무시 처리). 모바일은 HUD의 스와이프/가상 d-pad가 같은 hop을 발생.
 
@@ -85,7 +88,7 @@ Game/
 
 ## 8. 프로토타입 범위 밖 (out of scope)
 
-- 다중 스테이지, 세이브/로드, 사운드, 타이틀/메뉴 연출
+- 다중 스테이지, 세이브/로드, 사운드, 타이틀/메뉴 연출 고도화
 - 실제 voxel/lowpoly 에셋 임포트(프리미티브로 대체)
 - 모바일 빌드 최적화(키보드 우선 검증, 가상 d-pad/스와이프는 함께 넣되 데스크톱에서 1차 검증)
 
