@@ -63,7 +63,8 @@ public partial class Player : Node3D
     {
         if (awayDir.LengthSquared() < 0.0001f) return;
 
-        Vector3 pushed = Position + awayDir.Normalized() * GridUtil.TileSize;
+        Vector3 basePos = GridUtil.CellToWorld(Cx, Cz, 0.5f);
+        Vector3 pushed = basePos + awayDir.Normalized() * GridUtil.TileSize;
         Vector2I cell = GridUtil.WorldToCell(pushed);
         Cx = GridUtil.ClampCol(cell.X);
         Cz = GridUtil.ClampRow(cell.Y);

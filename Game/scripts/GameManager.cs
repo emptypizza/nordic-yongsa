@@ -157,6 +157,7 @@ public partial class GameManager : Node3D
 
                 e.Knockback(sep);
                 _player.Knockback(-sep);
+                continue; // 방금 넉백된 적은 이 프레임에 성배 피해를 주지 않는다
             }
 
             // 적 ↔ 성배: HP -1, 적 소멸
@@ -195,14 +196,28 @@ public partial class GameManager : Node3D
 
     private void OnWin()
     {
+        if (_state != State.Playing) return;
+
         _state = State.Win;
         _hud.ShowResult("ARRIVED!", new Color(0.3f, 0.8f, 0.3f));
+        FreezeActors();
     }
 
     private void OnLose()
     {
+        if (_state != State.Playing) return;
+
         _state = State.Lose;
         _hud.ShowResult("MISSION FAILED", new Color(1f, 0.24f, 0f));
+        FreezeActors();
+    }
+
+    private void FreezeActors()
+    {
+        _grail.SetProcess(false);
+        _player.SetProcess(false);
+        foreach (Enemy en in _enemies)
+            en.SetProcess(false);
     }
 
     private void Restart()
