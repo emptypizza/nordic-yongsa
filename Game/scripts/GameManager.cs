@@ -10,6 +10,10 @@ public partial class GameManager : Node3D
 
     private Grail _grail;
     private Player _player;
+    private readonly List<Enemy> _enemies = new();
+    private const int MaxEnemies = 6;
+    private const float SpawnInterval = 1.2f;
+    private float _spawnTimer;
     private Camera3D _camera;
     private readonly Vector3 _cameraOffset = new Vector3(0, 9, -7);
 
@@ -82,6 +86,25 @@ public partial class GameManager : Node3D
             InputMap.ActionAddEvent(name, new InputEventKey { PhysicalKeycode = k });
     }
 
+    private void SpawnEnemy()
+    {
+        var grailCell = new Vector2I(_grail.Cx, _grail.Cz);
+        Vector2I cell = grailCell;
+        for (int guard = 0; guard < 20; guard++)
+        {
+            int cx = GD.RandRange(0, GridUtil.Cols - 1);
+            int cz = GD.RandRange(0, GridUtil.Rows - 1);
+            cell = new Vector2I(cx, cz);
+            int manhattan = Mathf.Abs(cx - grailCell.X) + Mathf.Abs(cz - grailCell.Y);
+            if (manhattan >= 4) break; // 성배에서 최소 4칸 떨어져 스폰
+        }
+
+        var enemy = new Enemy();
+        enemy.Init(_grail, cell);
+        AddChild(enemy);
+        _enemies.Add(enemy);
+    }
+
     public override void _Process(double delta)
     {
         if (_state != State.Playing) return;
@@ -91,6 +114,13 @@ public partial class GameManager : Node3D
         Vector3 desired = focus + _cameraOffset;
         _camera.Position = _camera.Position.Lerp(desired, 1f - Mathf.Exp(-5f * dt));
         _camera.LookAt(focus, Vector3.Up);
+
+        _spawnTimer += dt;
+        if (_spawnTimer >= SpawnInterval && _enemies.Count < MaxEnemies)
+        {
+            _spawnTimer = 0f;
+            SpawnEnemy();
+        }
     }
 
     private void OnWin()

@@ -611,7 +611,7 @@ git commit -m "feat(game): grid-hop warrior with WASD/arrow input"
 - 생성: `Game/scripts/Enemy.cs`
 - 수정: `Game/scripts/GameManager.cs` (스폰 + 적 리스트)
 
-- [ ] **Step 1: `Game/scripts/Enemy.cs` 작성**
+- [x] **Step 1: `Game/scripts/Enemy.cs` 작성**
 
 ```csharp
 using Godot;
@@ -706,7 +706,7 @@ public partial class Enemy : Node3D
 }
 ```
 
-- [ ] **Step 2: `GameManager` 에 적 필드/상수 추가**
+- [x] **Step 2: `GameManager` 에 적 필드/상수 추가**
 
 `private Player _player;` 아래에 추가:
 ```csharp
@@ -716,7 +716,7 @@ public partial class Enemy : Node3D
     private float _spawnTimer;
 ```
 
-- [ ] **Step 3: `GameManager` 에 스폰 메서드 추가**
+- [x] **Step 3: `GameManager` 에 스폰 메서드 추가**
 
 클래스 안에 추가:
 ```csharp
@@ -740,7 +740,7 @@ public partial class Enemy : Node3D
     }
 ```
 
-- [ ] **Step 4: `GameManager._Process` 에 스폰 루프 추가**
+- [x] **Step 4: `GameManager._Process` 에 스폰 루프 추가**
 
 `_Process` 의 카메라 추적 블록 **아래**(메서드 끝나기 전)에 추가:
 ```csharp
@@ -752,7 +752,7 @@ public partial class Enemy : Node3D
         }
 ```
 
-- [ ] **Step 5: 빌드 확인**
+- [x] **Step 5: 빌드 확인**
 
 실행: `cd /Users/yhjang/Dev/nordic && dotnet build Game/Nordic.csproj`
 예상: `Build succeeded.` (에러 0).
@@ -766,7 +766,7 @@ public partial class Enemy : Node3D
    - 성배가 이동하면 적의 경로도 갱신된다.
    - Output 에러 0건.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 cd /Users/yhjang/Dev/nordic
