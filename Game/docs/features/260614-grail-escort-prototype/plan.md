@@ -465,7 +465,7 @@ git commit -m "feat(game): grail auto-hop with ground, camera follow, win/lose s
 - 생성: `Game/scripts/Player.cs`
 - 수정: `Game/scripts/GameManager.cs` (입력맵 등록 + 용사 생성)
 
-- [ ] **Step 1: `Game/scripts/Player.cs` 작성**
+- [x] **Step 1: `Game/scripts/Player.cs` 작성**
 
 ```csharp
 using Godot;
@@ -525,7 +525,7 @@ public partial class Player : Node3D
 }
 ```
 
-- [ ] **Step 2: `GameManager.cs` 에 입력맵 등록 메서드 추가**
+- [x] **Step 2: `GameManager.cs` 에 입력맵 등록 메서드 추가**
 
 `GameManager` 클래스 안(예: `BuildGround` 아래)에 추가:
 ```csharp
@@ -546,7 +546,7 @@ public partial class Player : Node3D
     }
 ```
 
-- [ ] **Step 3: `GameManager._Ready()` 수정 — 입력 등록 + 용사 생성**
+- [x] **Step 3: `GameManager._Ready()` 수정 — 입력 등록 + 용사 생성**
 
 `_Ready()` 본문을 아래로 교체:
 ```csharp
@@ -566,21 +566,21 @@ public partial class Player : Node3D
     }
 ```
 
-- [ ] **Step 4: `GameManager` 에 `_player` 필드 추가**
+- [x] **Step 4: `GameManager` 에 `_player` 필드 추가**
 
 `private Grail _grail;` 아래에 추가:
 ```csharp
     private Player _player;
 ```
 
-- [ ] **Step 5: 카메라 포커스를 성배·용사 중점으로 변경**
+- [x] **Step 5: 카메라 포커스를 성배·용사 중점으로 변경**
 
 `_Process` 의 `Vector3 focus = _grail.Position;` 줄을 아래로 교체:
 ```csharp
         Vector3 focus = (_grail.Position + _player.Position) * 0.5f;
 ```
 
-- [ ] **Step 6: 빌드 확인**
+- [x] **Step 6: 빌드 확인**
 
 실행: `cd /Users/yhjang/Dev/nordic && dotnet build Game/Nordic.csproj`
 예상: `Build succeeded.` (에러 0).
@@ -595,7 +595,7 @@ public partial class Player : Node3D
    - 보드 경계 밖으로는 나가지 않는다(막힘).
    - Output 에러 0건.
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 cd /Users/yhjang/Dev/nordic

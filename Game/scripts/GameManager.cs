@@ -9,11 +9,13 @@ public partial class GameManager : Node3D
     private State _state = State.Playing;
 
     private Grail _grail;
+    private Player _player;
     private Camera3D _camera;
     private readonly Vector3 _cameraOffset = new Vector3(0, 9, -7);
 
     public override void _Ready()
     {
+        SetupInput();
         BuildEnvironment();
         BuildGround();
 
@@ -21,6 +23,9 @@ public partial class GameManager : Node3D
         AddChild(_grail);
         _grail.ReachedGoal += OnWin;
         _grail.Died += OnLose;
+
+        _player = new Player();
+        AddChild(_player);
     }
 
     private void BuildEnvironment()
@@ -61,12 +66,28 @@ public partial class GameManager : Node3D
         }
     }
 
+    private static void SetupInput()
+    {
+        AddKeyAction("move_up", Key.W, Key.Up);
+        AddKeyAction("move_down", Key.S, Key.Down);
+        AddKeyAction("move_left", Key.A, Key.Left);
+        AddKeyAction("move_right", Key.D, Key.Right);
+    }
+
+    private static void AddKeyAction(string name, params Key[] keys)
+    {
+        if (InputMap.HasAction(name)) return;
+        InputMap.AddAction(name);
+        foreach (Key k in keys)
+            InputMap.ActionAddEvent(name, new InputEventKey { PhysicalKeycode = k });
+    }
+
     public override void _Process(double delta)
     {
         if (_state != State.Playing) return;
         float dt = (float)delta;
 
-        Vector3 focus = _grail.Position;
+        Vector3 focus = (_grail.Position + _player.Position) * 0.5f;
         Vector3 desired = focus + _cameraOffset;
         _camera.Position = _camera.Position.Lerp(desired, 1f - Mathf.Exp(-5f * dt));
         _camera.LookAt(focus, Vector3.Up);
