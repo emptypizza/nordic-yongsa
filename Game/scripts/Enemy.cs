@@ -98,7 +98,7 @@ public partial class Enemy : Node3D
         Vector2I cell = GridUtil.WorldToCell(pushed);
         _cell = new Vector2I(GridUtil.ClampCol(cell.X), GridUtil.ClampRow(cell.Y));
         Position = GridUtil.CellToWorld(_cell.X, _cell.Y, 0.4f);
-        Stun = 1.0f;
+        Stun = 0.5f;
         _hasTarget = false;
     }
 
