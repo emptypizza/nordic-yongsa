@@ -63,8 +63,8 @@ public partial class Hud : CanvasLayer
         // 모바일/마우스용 가상 d-pad (좌하단). 같은 4방향 hop을 발생.
         AddDpadButton("▲", new Vector2(70, -150), new Vector2I(0, 1));
         AddDpadButton("▼", new Vector2(70, -60), new Vector2I(0, -1));
-        AddDpadButton("◀", new Vector2(20, -105), new Vector2I(-1, 0));
-        AddDpadButton("▶", new Vector2(120, -105), new Vector2I(1, 0));
+        AddDpadButton("◀", new Vector2(20, -105), new Vector2I(1, 0));
+        AddDpadButton("▶", new Vector2(120, -105), new Vector2I(-1, 0));
     }
 
     private void AddDpadButton(string text, Vector2 offset, Vector2I dir)

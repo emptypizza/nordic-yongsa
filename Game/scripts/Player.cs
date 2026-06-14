@@ -4,7 +4,7 @@ namespace Nordic;
 
 public partial class Player : Node3D
 {
-    public int Cx { get; private set; } = 4;
+    public int Cx { get; private set; } = GridUtil.Cols / 2 + 1;
     public int Cz { get; private set; } = 0;
 
     private bool _hopping;
@@ -34,8 +34,8 @@ public partial class Player : Node3D
         // 누르고 있으면 hop 완료 후 다음 프레임에 연속 hop (디자인: hold = 연속 hop)
         if (Input.IsActionPressed("move_up")) TryHop(0, 1);
         else if (Input.IsActionPressed("move_down")) TryHop(0, -1);
-        else if (Input.IsActionPressed("move_left")) TryHop(-1, 0);
-        else if (Input.IsActionPressed("move_right")) TryHop(1, 0);
+        else if (Input.IsActionPressed("move_left")) TryHop(1, 0);
+        else if (Input.IsActionPressed("move_right")) TryHop(-1, 0);
     }
 
     public void TryHop(int dx, int dz)

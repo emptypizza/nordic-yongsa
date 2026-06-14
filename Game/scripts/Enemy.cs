@@ -4,7 +4,7 @@ namespace Nordic;
 
 public partial class Enemy : Node3D
 {
-    public float Speed = 2.5f;
+    public float Speed = 1.6f;
     public float Stun { get; private set; }
 
     private Grail _grail;

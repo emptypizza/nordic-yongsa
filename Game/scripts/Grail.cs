@@ -8,7 +8,7 @@ public partial class Grail : Node3D
     [Signal] public delegate void DiedEventHandler();
     [Signal] public delegate void HealthChangedEventHandler(int hp, int maxHp);
 
-    public int Cx { get; private set; } = 3;
+    public int Cx { get; private set; } = GridUtil.Cols / 2;
     public int Cz { get; private set; } = 0;
     public int MaxHp { get; private set; } = 5;
     public int Hp { get; private set; }

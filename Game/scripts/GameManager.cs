@@ -12,6 +12,7 @@ public partial class GameManager : Node3D
     private Player _player;
     private readonly List<Enemy> _enemies = new();
     private const int MaxEnemies = 6;
+    private const int MinEnemySpawnDistance = 8;
     private const float SpawnInterval = 1.2f;
     private float _spawnTimer;
     private Hud _hud;
@@ -97,16 +98,16 @@ public partial class GameManager : Node3D
     private void SpawnEnemy()
     {
         var grailCell = new Vector2I(_grail.Cx, _grail.Cz);
-        Vector2I cell = grailCell;
-        for (int guard = 0; guard < 20; guard++)
+        var candidates = new List<Vector2I>();
+        for (int cx = 0; cx < GridUtil.Cols; cx++)
+        for (int cz = 0; cz < GridUtil.Rows; cz++)
         {
-            int cx = GD.RandRange(0, GridUtil.Cols - 1);
-            int cz = GD.RandRange(0, GridUtil.Rows - 1);
-            cell = new Vector2I(cx, cz);
             int manhattan = Mathf.Abs(cx - grailCell.X) + Mathf.Abs(cz - grailCell.Y);
-            if (manhattan >= 4) break; // 성배에서 최소 4칸 떨어져 스폰
+            if (manhattan >= MinEnemySpawnDistance)
+                candidates.Add(new Vector2I(cx, cz));
         }
 
+        Vector2I cell = candidates[GD.RandRange(0, candidates.Count - 1)];
         var enemy = new Enemy();
         enemy.Init(_grail, cell);
         AddChild(enemy);
