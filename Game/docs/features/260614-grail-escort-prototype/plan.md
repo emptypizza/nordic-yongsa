@@ -36,7 +36,7 @@ GODOT="/Applications/Godot_mono.app/Contents/MacOS/Godot"
 - 생성: `Game/scripts/GridUtil.cs`
 - 생성: `Game/scripts/LogicTests.cs`
 
-- [ ] **Step 1: 작업 디렉터리/브랜치 준비**
+- [x] **Step 1: 작업 디렉터리/브랜치 준비**
 
 ```bash
 cd /Users/yhjang/Dev/nordic
@@ -44,7 +44,7 @@ git init -q            # 아직 git repo 아님
 git checkout -b feat/grail-escort-prototype
 ```
 
-- [ ] **Step 2: `Game/project.godot` 작성**
+- [x] **Step 2: `Game/project.godot` 작성**
 
 ```ini
 config_version=5
@@ -60,7 +60,7 @@ config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 project/assembly_name="Nordic"
 ```
 
-- [ ] **Step 3: `Game/Nordic.csproj` 작성**
+- [x] **Step 3: `Game/Nordic.csproj` 작성**
 
 `TargetFramework`는 `net10.0`을 csproj에 직접 명시한다(godot#103545 — Godot가 `net8.0`을 자동 삽입하는 버그 회피, 글로벌 `Directory.Build.props` 금지). 이 머신은 .NET 10 SDK라 네이티브로 돈다. (근거: 같은 Godot 4.6.3 + .NET 10을 쓰는 `planbattle-godot`의 검증된 설정.)
 
@@ -73,7 +73,7 @@ project/assembly_name="Nordic"
 </Project>
 ```
 
-- [ ] **Step 4: `Game/.gitignore` 작성**
+- [x] **Step 4: `Game/.gitignore` 작성**
 
 ```gitignore
 # Godot
@@ -85,7 +85,7 @@ obj/
 *.user
 ```
 
-- [ ] **Step 5: `Game/scripts/GridUtil.cs` 작성 (순수 그리드 수학)**
+- [x] **Step 5: `Game/scripts/GridUtil.cs` 작성 (순수 그리드 수학)**
 
 ```csharp
 using Godot;
@@ -125,7 +125,7 @@ public static class GridUtil
 }
 ```
 
-- [ ] **Step 6: `Game/scripts/LogicTests.cs` 작성 (헤드리스 셀프테스트)**
+- [x] **Step 6: `Game/scripts/LogicTests.cs` 작성 (헤드리스 셀프테스트)**
 
 ```csharp
 using Godot;
@@ -166,7 +166,7 @@ public partial class LogicTests : Node
 }
 ```
 
-- [ ] **Step 7: `Game/Main.tscn` 작성 (빈 루트 — 다음 태스크에서 스크립트 부착)**
+- [x] **Step 7: `Game/Main.tscn` 작성 (빈 루트 — 다음 태스크에서 스크립트 부착)**
 
 ```
 [gd_scene format=3]
@@ -174,7 +174,7 @@ public partial class LogicTests : Node
 [node name="Main" type="Node3D"]
 ```
 
-- [ ] **Step 8: `Game/Tests.tscn` 작성**
+- [x] **Step 8: `Game/Tests.tscn` 작성**
 
 ```
 [gd_scene load_steps=2 format=3]
@@ -185,7 +185,7 @@ public partial class LogicTests : Node
 script = ExtResource("1")
 ```
 
-- [ ] **Step 9: 빌드 확인**
+- [x] **Step 9: 빌드 확인**
 
 실행:
 ```bash
@@ -193,7 +193,7 @@ cd /Users/yhjang/Dev/nordic && dotnet build Game/Nordic.csproj
 ```
 예상: `Build succeeded.` (에러 0). 최초 실행 시 NuGet에서 `Godot.NET.Sdk`/`GodotSharp` 복원됨.
 
-- [ ] **Step 10: 헤드리스 셀프테스트 실행**
+- [x] **Step 10: 헤드리스 셀프테스트 실행**
 
 실행:
 ```bash
@@ -203,7 +203,7 @@ GODOT="/Applications/Godot_mono.app/Contents/MacOS/Godot"
 예상: 표준출력에 `[selftest] ... PASS` 행들 + 마지막 `[selftest] ALL PASS`, 종료코드 0.
 실패 시(예: 런타임 못 찾음): `Game/Nordic.csproj`의 `TargetFramework`가 `net10.0`인지 확인한다(Godot가 `net8.0`을 끼워넣었으면 되돌린다 — godot#103545).
 
-- [ ] **Step 11: 커밋**
+- [x] **Step 11: 커밋**
 
 ```bash
 cd /Users/yhjang/Dev/nordic
