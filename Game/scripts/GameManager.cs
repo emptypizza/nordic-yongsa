@@ -12,7 +12,8 @@ public partial class GameManager : Node3D
     private Player _player;
     private readonly List<Enemy> _enemies = new();
     private const int MaxEnemies = 6;
-    private const int MinEnemySpawnDistance = 8;
+    private const int MinEnemySpawnDistance = 10;
+    private const int SpawnDistanceBand = 6;
     private const float SpawnInterval = 2.5f;
     private float _spawnTimer;
     private Hud _hud;
@@ -98,16 +99,18 @@ public partial class GameManager : Node3D
     private void SpawnEnemy()
     {
         var grailCell = new Vector2I(_grail.Cx, _grail.Cz);
-        var candidates = new List<Vector2I>();
-        for (int cx = 0; cx < GridUtil.Cols; cx++)
-        for (int cz = 0; cz < GridUtil.Rows; cz++)
+        Vector2I cell = grailCell;
+        for (int guard = 0; guard < 24; guard++)
         {
+            float ang = GD.Randf() * Mathf.Tau;
+            float dist = MinEnemySpawnDistance + GD.Randf() * SpawnDistanceBand;
+            int cx = GridUtil.ClampCol(grailCell.X + Mathf.RoundToInt(Mathf.Cos(ang) * dist));
+            int cz = GridUtil.ClampRow(grailCell.Y + Mathf.RoundToInt(Mathf.Sin(ang) * dist));
+            cell = new Vector2I(cx, cz);
             int manhattan = Mathf.Abs(cx - grailCell.X) + Mathf.Abs(cz - grailCell.Y);
-            if (manhattan >= MinEnemySpawnDistance)
-                candidates.Add(new Vector2I(cx, cz));
+            if (manhattan >= MinEnemySpawnDistance) break;
         }
 
-        Vector2I cell = candidates[GD.RandRange(0, candidates.Count - 1)];
         var enemy = new Enemy();
         enemy.Init(_grail, cell);
         AddChild(enemy);
