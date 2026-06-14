@@ -18,7 +18,8 @@ public partial class GameManager : Node3D
     private float _spawnTimer;
     private Hud _hud;
     private Camera3D _camera;
-    private readonly Vector3 _cameraOffset = new Vector3(0, 9, -7);
+    private readonly Vector3 _cameraOffset = new Vector3(0, 11, -8);
+    private const float CameraLookAhead = 7f; // Look ahead on +z so portrait framing keeps action lower.
 
     public override void _Ready()
     {
@@ -60,7 +61,7 @@ public partial class GameManager : Node3D
 
         _camera = new Camera3D();
         _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
-        _camera.Position = new Vector3(3, 9, -7);
+        _camera.Position = new Vector3(GridUtil.Cols / 2f, 11f, -8f);
         AddChild(_camera);
         _camera.Current = true;
     }
@@ -127,7 +128,8 @@ public partial class GameManager : Node3D
         Vector3 focus = (_grail.Position + _player.Position) * 0.5f;
         Vector3 desired = focus + _cameraOffset;
         _camera.Position = _camera.Position.Lerp(desired, 1f - Mathf.Exp(-5f * dt));
-        _camera.LookAt(focus, Vector3.Up);
+        Vector3 lookTarget = focus + new Vector3(0f, 0f, CameraLookAhead);
+        _camera.LookAt(lookTarget, Vector3.Up);
 
         _spawnTimer += dt;
         if (_spawnTimer >= SpawnInterval && _enemies.Count < MaxEnemies)
