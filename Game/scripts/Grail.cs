@@ -9,13 +9,11 @@ public partial class Grail : Node3D
     [Signal] public delegate void HealthChangedEventHandler(int hp, int maxHp);
 
     public int Cx { get; private set; } = GridUtil.Cols / 2;
-    public int Cz { get; private set; } = 0;
+    public int Cz => GridUtil.ClampRow(Mathf.RoundToInt(Position.Z / GridUtil.TileSize));
     public int MaxHp { get; private set; } = 5;
     public int Hp { get; private set; }
 
-    private const float HopInterval = 1.5f;
-    private float _hopTimer;
-    private bool _hopping;
+    private const float ForwardSpeed = GridUtil.TileSize / 1.5f; // 0.667 u/s = 기존 1타일/1.5초 평균과 동일
     private float _invincible;
     private MeshInstance3D _mesh;
 
@@ -61,29 +59,14 @@ public partial class Grail : Node3D
             _mesh.Visible = true;
         }
 
-        if (_hopping) return;
-        _hopTimer += dt;
-        if (_hopTimer >= HopInterval)
-        {
-            _hopTimer = 0f;
-            Hop();
-        }
-    }
-
-    private void Hop()
-    {
-        if (Cz + 1 >= GridUtil.Rows)
+        float goalZ = (GridUtil.Rows - 1) * GridUtil.TileSize;
+        if (Position.Z >= goalZ)
         {
             EmitSignal(SignalName.ReachedGoal);
             SetProcess(false);
             return;
         }
-        Cz += 1;
-        _hopping = true;
-        Vector3 target = GridUtil.CellToWorld(Cx, Cz, 0.5f);
-        Tween tween = CreateTween();
-        tween.TweenProperty(this, "position", target, 0.3f).SetTrans(Tween.TransitionType.Sine);
-        tween.TweenCallback(Callable.From(() => _hopping = false));
+        Position += new Vector3(0f, 0f, ForwardSpeed * dt);
     }
 
     public void TakeDamage()
