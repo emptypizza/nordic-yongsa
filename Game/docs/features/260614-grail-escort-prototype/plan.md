@@ -220,7 +220,7 @@ git commit -m "feat(game): scaffold Godot mono project with GridUtil + headless 
 - 생성: `Game/scripts/GameManager.cs`
 - 수정: `Game/Main.tscn` (루트에 `GameManager` 스크립트 부착)
 
-- [ ] **Step 1: `Game/scripts/Grail.cs` 작성**
+- [x] **Step 1: `Game/scripts/Grail.cs` 작성**
 
 ```csharp
 using Godot;
@@ -322,7 +322,7 @@ public partial class Grail : Node3D
 }
 ```
 
-- [ ] **Step 2: `Game/scripts/GameManager.cs` 작성 (이 태스크 범위: 환경/바닥/카메라/성배)**
+- [x] **Step 2: `Game/scripts/GameManager.cs` 작성 (이 태스크 범위: 환경/바닥/카메라/성배)**
 
 ```csharp
 using Godot;
@@ -413,7 +413,7 @@ public partial class GameManager : Node3D
 }
 ```
 
-- [ ] **Step 3: `Game/Main.tscn` 수정 (스크립트 부착)**
+- [x] **Step 3: `Game/Main.tscn` 수정 (스크립트 부착)**
 
 기존 내용을 아래로 교체:
 ```
@@ -425,12 +425,12 @@ public partial class GameManager : Node3D
 script = ExtResource("1")
 ```
 
-- [ ] **Step 4: 빌드 확인**
+- [x] **Step 4: 빌드 확인**
 
 실행: `cd /Users/yhjang/Dev/nordic && dotnet build Game/Nordic.csproj`
 예상: `Build succeeded.` (에러 0).
 
-- [ ] **Step 5: 헤드리스 스모크(런타임 에러 0 확인)**
+- [x] **Step 5: 헤드리스 스모크(런타임 에러 0 확인)**
 
 실행:
 ```bash
@@ -449,7 +449,7 @@ GODOT="/Applications/Godot_mono.app/Contents/MacOS/Godot"
    - 성배가 끝 행 도달 시 콘솔(Output)에 `[game] WIN` 출력.
    - Output에 에러(빨강) 0건.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 cd /Users/yhjang/Dev/nordic
