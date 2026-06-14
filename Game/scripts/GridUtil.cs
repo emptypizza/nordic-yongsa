@@ -5,8 +5,8 @@ namespace Nordic;
 public static class GridUtil
 {
     public const float TileSize = 1.0f;
-    public const int Cols = 11;  // x: 0..10
-    public const int Rows = 18;  // z: 0..17
+    public const int Cols = 19;  // x: 0..18
+    public const int Rows = 30;  // z: 0..29
 
     public static Vector3 CellToWorld(int cx, int cz, float y = 0f)
         => new Vector3(cx * TileSize, y, cz * TileSize);

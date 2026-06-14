@@ -13,7 +13,7 @@ public partial class GameManager : Node3D
     private readonly List<Enemy> _enemies = new();
     private const int MaxEnemies = 6;
     private const int MinEnemySpawnDistance = 8;
-    private const float SpawnInterval = 1.2f;
+    private const float SpawnInterval = 2.5f;
     private float _spawnTimer;
     private Hud _hud;
     private Camera3D _camera;
@@ -135,10 +135,12 @@ public partial class GameManager : Node3D
         {
             Enemy e = _enemies[i];
 
-            // 적 ↔ 용사: 넉백 + 기절 (처치 없음)
+            // 적 ↔ 용사: 서로 반대 방향으로 넉백, 적만 기절 (처치 없음)
             if (e.Stun <= 0f && e.Position.DistanceTo(_player.Position) < 0.6f)
             {
-                e.Knockback(e.Position - _player.Position);
+                Vector3 sep = e.Position - _player.Position;
+                e.Knockback(sep);
+                _player.Knockback(-sep);
             }
 
             // 적 ↔ 성배: HP -1, 적 소멸

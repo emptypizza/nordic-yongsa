@@ -8,6 +8,7 @@ public partial class Player : Node3D
     public int Cz { get; private set; } = 0;
 
     private bool _hopping;
+    private int _moveToken;
 
     public override void _Ready()
     {
@@ -47,9 +48,35 @@ public partial class Player : Node3D
         Cx = nx;
         Cz = nz;
         _hopping = true;
+        int moveToken = ++_moveToken;
         Vector3 target = GridUtil.CellToWorld(Cx, Cz, 0.5f);
         Tween tween = CreateTween();
         tween.TweenProperty(this, "position", target, 0.12f).SetTrans(Tween.TransitionType.Sine);
-        tween.TweenCallback(Callable.From(() => _hopping = false));
+        tween.TweenCallback(Callable.From(() =>
+        {
+            if (moveToken == _moveToken)
+                _hopping = false;
+        }));
+    }
+
+    public void Knockback(Vector3 awayDir)
+    {
+        if (awayDir.LengthSquared() < 0.0001f) return;
+
+        Vector3 pushed = Position + awayDir.Normalized() * GridUtil.TileSize;
+        Vector2I cell = GridUtil.WorldToCell(pushed);
+        Cx = GridUtil.ClampCol(cell.X);
+        Cz = GridUtil.ClampRow(cell.Y);
+        _hopping = true;
+        int moveToken = ++_moveToken;
+
+        Vector3 target = GridUtil.CellToWorld(Cx, Cz, 0.5f);
+        Tween tween = CreateTween();
+        tween.TweenProperty(this, "position", target, 0.15f).SetTrans(Tween.TransitionType.Sine);
+        tween.TweenCallback(Callable.From(() =>
+        {
+            if (moveToken == _moveToken)
+                _hopping = false;
+        }));
     }
 }

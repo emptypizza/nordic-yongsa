@@ -78,9 +78,9 @@ public partial class Enemy : Node3D
             PickNextTarget();
     }
 
-    public void Knockback(Vector3 fromDir)
+    public void Knockback(Vector3 awayDir)
     {
-        Vector3 pushed = Position - fromDir.Normalized() * 2.0f * GridUtil.TileSize;
+        Vector3 pushed = Position + awayDir.Normalized() * 2.0f * GridUtil.TileSize;
         Vector2I cell = GridUtil.WorldToCell(pushed);
         _cell = new Vector2I(GridUtil.ClampCol(cell.X), GridUtil.ClampRow(cell.Y));
         Position = GridUtil.CellToWorld(_cell.X, _cell.Y, 0.4f);
