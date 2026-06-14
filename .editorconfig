@@ -1,0 +1,12 @@
+root = true
+
+# C# source — house style is 4-space indentation (not tabs).
+# Godot's built-in script editor and external IDEs both honor this,
+# preventing tab/space churn in a multi-contributor repo.
+[*.cs]
+indent_style = space
+indent_size = 4
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+end_of_line = lf
