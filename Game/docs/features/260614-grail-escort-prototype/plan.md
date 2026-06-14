@@ -782,7 +782,7 @@ git commit -m "feat(game): right-angle grid-pursuit enemies with spawner"
 - 생성: `Game/scripts/Hud.cs`
 - 수정: `Game/scripts/GameManager.cs` (충돌 판정 + HUD 연결 + 재시작)
 
-- [ ] **Step 1: `Game/scripts/Hud.cs` 작성**
+- [x] **Step 1: `Game/scripts/Hud.cs` 작성**
 
 ```csharp
 using Godot;
@@ -880,14 +880,14 @@ public partial class Hud : CanvasLayer
 }
 ```
 
-- [ ] **Step 2: `GameManager` 에 `_hud` 필드 추가**
+- [x] **Step 2: `GameManager` 에 `_hud` 필드 추가**
 
 `private Camera3D _camera;` 위에 추가:
 ```csharp
     private Hud _hud;
 ```
 
-- [ ] **Step 3: `GameManager._Ready()` 끝에 HUD 생성/연결 추가**
+- [x] **Step 3: `GameManager._Ready()` 끝에 HUD 생성/연결 추가**
 
 `_Ready()` 의 `AddChild(_player);` 아래에 추가:
 ```csharp
@@ -899,7 +899,7 @@ public partial class Hud : CanvasLayer
         _hud.SetHealth(_grail.Hp, _grail.MaxHp); // 초기값(연결 전 _Ready emit 보정)
 ```
 
-- [ ] **Step 4: `GameManager._Process` 에 충돌 판정 추가**
+- [x] **Step 4: `GameManager._Process` 에 충돌 판정 추가**
 
 `_Process` 의 스폰 블록 **아래**(메서드 끝나기 전)에 추가:
 ```csharp
@@ -923,7 +923,7 @@ public partial class Hud : CanvasLayer
         }
 ```
 
-- [ ] **Step 5: `OnWin`/`OnLose` 를 HUD 결과 표시로 교체 + `Restart` 추가**
+- [x] **Step 5: `OnWin`/`OnLose` 를 HUD 결과 표시로 교체 + `Restart` 추가**
 
 기존 `OnWin`/`OnLose` 본문 교체 및 메서드 추가:
 ```csharp
@@ -945,7 +945,7 @@ public partial class Hud : CanvasLayer
     }
 ```
 
-- [ ] **Step 6: 빌드 확인**
+- [x] **Step 6: 빌드 확인**
 
 실행: `cd /Users/yhjang/Dev/nordic && dotnet build Game/Nordic.csproj`
 예상: `Build succeeded.` (에러 0).
@@ -962,7 +962,7 @@ public partial class Hud : CanvasLayer
    - 성배가 끝 행 도달 → "ARRIVED!" 패널.
    - Output 에러 0건.
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 cd /Users/yhjang/Dev/nordic

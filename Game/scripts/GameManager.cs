@@ -14,6 +14,7 @@ public partial class GameManager : Node3D
     private const int MaxEnemies = 6;
     private const float SpawnInterval = 1.2f;
     private float _spawnTimer;
+    private Hud _hud;
     private Camera3D _camera;
     private readonly Vector3 _cameraOffset = new Vector3(0, 9, -7);
 
@@ -30,6 +31,13 @@ public partial class GameManager : Node3D
 
         _player = new Player();
         AddChild(_player);
+
+        _hud = new Hud();
+        AddChild(_hud);
+        _hud.HopRequested += dir => _player.TryHop(dir.X, dir.Y);
+        _hud.RetryPressed += Restart;
+        _grail.HealthChanged += _hud.SetHealth;
+        _hud.SetHealth(_grail.Hp, _grail.MaxHp); // 초기값(연결 전 _Ready emit 보정)
     }
 
     private void BuildEnvironment()
@@ -121,17 +129,41 @@ public partial class GameManager : Node3D
             _spawnTimer = 0f;
             SpawnEnemy();
         }
+
+        for (int i = _enemies.Count - 1; i >= 0; i--)
+        {
+            Enemy e = _enemies[i];
+
+            // 적 ↔ 용사: 넉백 + 기절 (처치 없음)
+            if (e.Stun <= 0f && e.Position.DistanceTo(_player.Position) < 0.6f)
+            {
+                e.Knockback(e.Position - _player.Position);
+            }
+
+            // 적 ↔ 성배: HP -1, 적 소멸
+            if (e.Position.DistanceTo(_grail.Position) < 0.6f)
+            {
+                _grail.TakeDamage();
+                e.QueueFree();
+                _enemies.RemoveAt(i);
+            }
+        }
     }
 
     private void OnWin()
     {
         _state = State.Win;
-        GD.Print("[game] WIN");
+        _hud.ShowResult("ARRIVED!", new Color(0.3f, 0.8f, 0.3f));
     }
 
     private void OnLose()
     {
         _state = State.Lose;
-        GD.Print("[game] LOSE");
+        _hud.ShowResult("MISSION FAILED", new Color(1f, 0.24f, 0f));
+    }
+
+    private void Restart()
+    {
+        GetTree().ReloadCurrentScene();
     }
 }
