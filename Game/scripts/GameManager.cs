@@ -112,7 +112,8 @@ public partial class GameManager : Node3D
         }
 
         var enemy = new Enemy();
-        enemy.Init(_grail, cell);
+        int hp = GD.Randf() < 0.7f ? 1 : GD.RandRange(2, 3);
+        enemy.Init(_grail, cell, hp);
         AddChild(enemy);
         _enemies.Add(enemy);
     }
@@ -138,10 +139,19 @@ public partial class GameManager : Node3D
         {
             Enemy e = _enemies[i];
 
-            // 적 ↔ 용사: 서로 반대 방향으로 넉백, 적만 기절 (처치 없음)
+            // Enemy vs player: each hit deals 1 damage; surviving enemies are knocked back and stunned.
             if (e.Stun <= 0f && e.Position.DistanceTo(_player.Position) < 0.6f)
             {
                 Vector3 sep = e.Position - _player.Position;
+                if (e.TakeHit())
+                {
+                    SpawnDeathFx(e.GlobalPosition);
+                    e.QueueFree();
+                    _enemies.RemoveAt(i);
+                    _player.Knockback(-sep);
+                    continue;
+                }
+
                 e.Knockback(sep);
                 _player.Knockback(-sep);
             }
@@ -154,6 +164,30 @@ public partial class GameManager : Node3D
                 _enemies.RemoveAt(i);
             }
         }
+    }
+
+    private void SpawnDeathFx(Vector3 pos)
+    {
+        var fx = new CpuParticles3D
+        {
+            Emitting = true,
+            OneShot = true,
+            Amount = 10,
+            Lifetime = 0.4f,
+            Position = pos,
+            Mesh = new BoxMesh { Size = new Vector3(0.12f, 0.12f, 0.12f) },
+            InitialVelocityMin = 2f,
+            InitialVelocityMax = 4f,
+            Gravity = new Vector3(0, -6, 0)
+        };
+        AddChild(fx);
+
+        var timer = GetTree().CreateTimer(0.8);
+        timer.Timeout += () =>
+        {
+            if (IsInstanceValid(fx))
+                fx.QueueFree();
+        };
     }
 
     private void OnWin()
