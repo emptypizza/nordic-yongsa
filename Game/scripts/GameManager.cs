@@ -59,6 +59,7 @@ public partial class GameManager : Node3D
         AddChild(sun);
 
         _camera = new Camera3D();
+        _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
         _camera.Position = new Vector3(3, 9, -7);
         AddChild(_camera);
         _camera.Current = true;
