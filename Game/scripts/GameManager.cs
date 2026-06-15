@@ -61,6 +61,8 @@ public partial class GameManager : Node3D
         AddChild(sun);
 
         _camera = new Camera3D();
+        _camera.Projection = Camera3D.ProjectionType.Orthogonal;
+        _camera.Size = 20f; // 직교 가시 폭(KeepAspect=Width 기준, 월드 유닛). 초기값 - 호출자가 스크린샷으로 조정.
         _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
         _camera.Position = new Vector3(GridUtil.Cols / 2f, 11f, -8f);
         AddChild(_camera);
