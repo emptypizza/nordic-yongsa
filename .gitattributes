@@ -1,0 +1,4 @@
+# Large binary game assets tracked via Git LFS
+Game/scripts/*.glb filter=lfs diff=lfs merge=lfs -text
+Game/scripts/*.png filter=lfs diff=lfs merge=lfs -text
+Game/scripts/*.fbx filter=lfs diff=lfs merge=lfs -text
