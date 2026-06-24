@@ -24,7 +24,7 @@ public partial class Enemy : Node3D
     public override void _Ready()
     {
         BuildVisual();
-        Position = GridUtil.CellToWorld(_cell.X, _cell.Y, 0.4f);
+        Position = GridUtil.CellToWorld(_cell.X, _cell.Y, 0f);
         PickNextTarget();
     }
 
@@ -65,7 +65,7 @@ public partial class Enemy : Node3D
             return;
         }
         _cell += step;
-        _targetPos = GridUtil.CellToWorld(_cell.X, _cell.Y, 0.4f);
+        _targetPos = GridUtil.CellToWorld(_cell.X, _cell.Y, 0f);
         _hasTarget = true;
     }
 
@@ -94,11 +94,11 @@ public partial class Enemy : Node3D
 
     public void Knockback(Vector3 awayDir)
     {
-        Vector3 basePos = GridUtil.CellToWorld(_cell.X, _cell.Y, 0.4f);
+        Vector3 basePos = GridUtil.CellToWorld(_cell.X, _cell.Y, 0f);
         Vector3 pushed = basePos + awayDir.Normalized() * 2.0f * GridUtil.TileSize;
         Vector2I cell = GridUtil.WorldToCell(pushed);
         _cell = new Vector2I(GridUtil.ClampCol(cell.X), GridUtil.ClampRow(cell.Y));
-        Position = GridUtil.CellToWorld(_cell.X, _cell.Y, 0.4f);
+        Position = GridUtil.CellToWorld(_cell.X, _cell.Y, 0f);
         Stun = 0.5f;
         _hasTarget = false;
     }

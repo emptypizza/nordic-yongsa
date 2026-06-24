@@ -62,7 +62,7 @@ public partial class GameManager : Node3D
 
 		_camera = new Camera3D();
 		_camera.Projection = Camera3D.ProjectionType.Orthogonal;
-		_camera.Size = 20f; // 직교 가시 폭(KeepAspect=Width 기준, 월드 유닛). 초기값 - 호출자가 스크린샷으로 조정.
+		_camera.Size = 10f; // 직교 가시 폭(KeepAspect=Width 기준, 월드 유닛). 작을수록 줌인.
 		_camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
 		_camera.Position = new Vector3(GridUtil.Cols / 2f, 11f, -8f);
 		AddChild(_camera);
@@ -74,13 +74,13 @@ public partial class GameManager : Node3D
 		for (int x = 0; x < GridUtil.Cols; x++)
 		for (int z = 0; z < GridUtil.Rows; z++)
 		{
-			var tile = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(1f, 0.1f, 1f) } };
+			var tile = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(1f, 1f) } };
 			bool even = (x + z) % 2 == 0;
 			tile.MaterialOverride = new StandardMaterial3D
 			{
 				AlbedoColor = even ? new Color(0.55f, 0.75f, 0.45f) : new Color(0.5f, 0.7f, 0.4f)
 			};
-			tile.Position = GridUtil.CellToWorld(x, z, -0.05f);
+			tile.Position = GridUtil.CellToWorld(x, z, 0f);
 			AddChild(tile);
 		}
 	}

@@ -21,7 +21,7 @@ public partial class Grail : Node3D
 	{
 		Hp = MaxHp;
 		BuildVisual();
-		Position = GridUtil.CellToWorld(Cx, Cz, 0.5f);
+		Position = GridUtil.CellToWorld(Cx, Cz, 0f);
 		EmitSignal(SignalName.HealthChanged, Hp, MaxHp);
 	}
 
