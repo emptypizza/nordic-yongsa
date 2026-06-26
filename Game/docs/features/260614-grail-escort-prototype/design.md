@@ -7,7 +7,7 @@ created: 2026-06-14
 # Grail Escort 프로토타입 — 설계
 
 원작(`game00nordic`, "Galapagos: Escort Mission")의 호송 코어 루프를 계승하되,
-**Godot-mono(C#) 3D + 4방향 그리드 + 검 든 용사 + 성배** 로 재구성한 프로토타입.
+**Godot(GDScript) 3D + 4방향 그리드 + 검 든 용사 + 성배** 로 재구성한 프로토타입(엔진 Godot 4.7).
 
 ## 1. 게임 개요
 
@@ -55,14 +55,16 @@ Game/
   StageSelect.tscn       # 루트 CanvasLayer + StageSelect 코드-빌드 UI
   Main.tscn              # 루트 Node3D + 카메라/조명/보드/UI 조립
   scripts/
-    TitleScreen.cs       # START → StageSelect.tscn
-    StageSelect.cs       # STAGE 1 → Main.tscn
-    GameManager.cs       # 상태(Playing/Win/Lose), 적 스폰, HP 집계, 재시작
-    GridUtil.cs          # 그리드↔월드 변환, 경계
-    Grail.cs             # 연속 전진, HP, 무적, Win/Death 신호
-    Player.cs            # 4방향 grid hop(키 입력 트리거), 넉백 충돌
-    Enemy.cs             # 연속 직각 그리드 추적, 충돌 판정
-    Hud.cs               # HP 바, STAGE 라벨, 결과 화면(Retry/Stage Select), (모바일) 가상 d-pad
+    TitleScreen.gd       # START → StageSelect.tscn
+    StageSelect.gd       # STAGE 1 → Main.tscn
+    GameManager.gd       # 상태(Playing/Win/Lose), 적 스폰, HP 집계, 재시작
+    GridUtil.gd          # 그리드↔월드 변환, 경계
+    Grail.gd             # 연속 전진, HP, 무적, Win/Death 신호
+    Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌
+    Enemy.gd             # 연속 직각 그리드 추적, 충돌 판정
+    Hud.gd               # HP 바, STAGE 라벨, 결과 화면(Retry/Stage Select), (모바일) 가상 d-pad
+    WindowFit.gd         # autoload: 데스크톱 창을 9:16으로 리사이즈(모바일/헤드리스 비활성)
+    LogicTests.gd        # GridUtil 헤드리스 셀프테스트, Tests.tscn으로 실행
 ```
 
 - 화면 흐름: `Title` → `Stage Select`(스테이지 1개) → `Play` → 결과(`ARRIVED!`/`MISSION FAILED`) 패널에서 `RETRY`(같은 판 재시작) 또는 `STAGE SELECT`(선택 화면 복귀). 시작 씬은 `res://Title.tscn`이며, 화면 스크립트는 씬에 UI 자식을 저장하지 않고 `_Ready()`에서 코드로 빌드한다. 메뉴 화면(`Title`/`StageSelect`)은 `Hud`와 동일하게 `CanvasLayer` 루트 아래 중앙 정렬 `Control` 자식을 둔다.
@@ -79,7 +81,7 @@ Game/
 - 전부 Godot 프리미티브 + 플랫 컬러:
   - 바닥: 교차색 타일 격자
   - 성배: 발광(emission) 금색 덩어리 + 위아래 bob
-  - 용사: 블록 몸체 + 검 박스
+  - 용사: `Test Ch.glb` voxel 모델(Player.gd가 glb를 자식 노드로 로드, 깡총 hop 아크+착지 스쿼시, 이동 방향 회전). 프리미티브 블록+검 박스 아님.
   - 적: 잡몹은 붉은 어두운 박스 + 흰 눈 박스, 강한 적은 더 큰 어두운 보라 박스 + 흰 눈 박스
 - 추후 `.glb` lowpoly 에셋으로 **메시만 교체**(스크립트 불변하도록 메시를 자식 노드로 분리).
 
@@ -91,10 +93,11 @@ Game/
 ## 8. 프로토타입 범위 밖 (out of scope)
 
 - 다중 스테이지, 세이브/로드, 사운드, 타이틀/메뉴 연출 고도화
-- 실제 voxel/lowpoly 에셋 임포트(프리미티브로 대체)
+- 실제 voxel/lowpoly 에셋 임포트: 용사는 이미 `Test Ch.glb` voxel 모델을 사용한다. 나머지 액터(성배/적/바닥)는 당분간 프리미티브 플레이스홀더 유지.
 - 모바일 빌드 최적화(키보드 우선 검증, 가상 d-pad/스와이프는 함께 넣되 데스크톱에서 1차 검증)
 
 ## 9. 검증 환경 (참고)
 
-- `/Applications`에 `Godot.app` + `Godot_mono.app` 존재, `.NET 10.0.107` 설치 확인됨.
-- 구현 계획 단계에서 Godot 정확한 버전(4.x .NET 호환)을 확인할 것.
+- 엔진 **Godot 4.7** (`4.7.stable.mono`). GDScript 프로젝트라 **.NET / DOTNET_ROOT 불필요**(mono 빌드라도 C# 없이 구동).
+- 헤드리스 셀프테스트 `Tests.tscn` **9/9 PASS** 확인됨(`godot --headless --path Game res://Tests.tscn`).
+- 메인 게임 헤드리스 구동 정상 확인됨(`godot --headless --path Game res://Main.tscn --quit-after 450`, exit 0, 스크립트/파스 에러 0).

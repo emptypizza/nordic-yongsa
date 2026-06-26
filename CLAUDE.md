@@ -1,12 +1,13 @@
 # Nordic — Grail Escort (Godot prototype)
 
 A real-time grid escort game. A sword-wielding warrior protects an auto-advancing
-sacred grail across a 4-directional grid board. Engine: **Godot-mono (C#), 3D**.
+sacred grail across a 4-directional grid board. Engine: **Godot (GDScript), 3D** (Godot 4.7).
 
 ## Project layout
 
 - The repo root holds meta/config (this file, shared tooling).
-- **The Godot project lives in `Game/`** — `Game/project.godot`, `Game/scenes/`,
+- **The Godot project lives in `Game/`** — `Game/project.godot`, the scene files at the
+  `Game/` root (`Title.tscn`, `StageSelect.tscn`, `Main.tscn`, `Tests.tscn`), and
   `Game/scripts/`. Treat `Game/` as the Godot project root; open that folder in the editor.
 
 ## Docs policy (OVERRIDES the global vault policy)

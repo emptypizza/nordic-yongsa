@@ -96,6 +96,7 @@ func _add_key_action(action_name: String, keys: Array) -> void:
 func _spawn_enemy() -> void:
 	var grail_cell := Vector2i(_grail.cx, _grail.get_cz())
 	var cell := grail_cell
+	var found := false
 	for guard in 24:
 		var ang := randf() * TAU
 		var dist := MIN_ENEMY_SPAWN_DISTANCE + randf() * SPAWN_DISTANCE_BAND
@@ -104,7 +105,23 @@ func _spawn_enemy() -> void:
 		cell = Vector2i(cx, cz)
 		var manhattan := absi(cx - grail_cell.x) + absi(cz - grail_cell.y)
 		if manhattan >= MIN_ENEMY_SPAWN_DISTANCE:
+			found = true
 			break
+
+	if not found:
+		# 24회 랜덤 시도가 모두 실패하면(성배가 보드 가장자리·모서리라 clamp가 후보를
+		# MIN_DIST 안쪽으로 당김) 결정론적 fallback. 보드(19×30)는 z축 여유만으로
+		# 어디서든 MIN_DIST 확보 가능: z 여유가 큰 방향으로 MIN_DIST만큼 떨어뜨린다.
+		var gz := grail_cell.y
+		var zdir := 1 if gz <= GridUtil.ROWS - 1 - MIN_ENEMY_SPAWN_DISTANCE else -1
+		var fcz := GridUtil.clamp_row(gz + zdir * MIN_ENEMY_SPAWN_DISTANCE)
+		var fcx := grail_cell.x
+		# clamp으로 z 거리가 모자라면 보드 폭이 넓은 쪽으로 x축에서 남은 거리를 보충.
+		var deficit := MIN_ENEMY_SPAWN_DISTANCE - absi(fcz - gz)
+		if deficit > 0:
+			var xdir := 1 if grail_cell.x <= (GridUtil.COLS - 1) / 2 else -1
+			fcx = GridUtil.clamp_col(grail_cell.x + xdir * deficit)
+		cell = Vector2i(fcx, fcz)
 
 	var enemy := Enemy.new()
 	var hp: int = 1 if randf() < 0.7 else randi_range(2, 3)
@@ -143,9 +160,11 @@ func _process(delta: float) -> void:
 			_player.knockback(-sep)
 			continue  # 방금 넉백된 적은 이 프레임에 성배 피해 X
 
-		# 적 ↔ 성배: HP -1, 적 소멸
+		# 적 ↔ 성배: HP -1, 적 소멸 (+ death 파티클)
 		if e.position.distance_to(_grail.position) < 0.6:
+			var death_pos := e.global_position  # queue_free 전에 위치 확보
 			_grail.take_damage()
+			_spawn_death_fx(death_pos)
 			e.queue_free()
 			_enemies.remove_at(i)
 

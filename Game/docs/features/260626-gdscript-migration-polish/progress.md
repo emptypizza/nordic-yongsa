@@ -12,8 +12,14 @@ created: 2026-06-26
 ## 0. 현재 상태 한 줄
 
 C#→GDScript 마이그레이션이 **코드상 완료**되었고 **헤드리스로 깨끗하게 구동**됨을 검증 완료.
-다음 단계는 (1) 문서 동기화(필수) + (2) 게임 개선 구현.
-**아직 코드/문서 수정은 미적용** — 작업트리는 분석 시작 전 상태 그대로다(신규 추가 파일은 이 progress.md뿐).
+**§3 문서 동기화(items 1~5) + §4 코드 개선(items 6~7) 모두 적용·검증 완료(2026-06-26).**
+멀티 에이전트(파일 단위 5개 병렬)로 처리. 변경 파일: `CLAUDE.md`, `design.md`, `.claude/rules/godot.md`,
+`plan.md`, `GameManager.gd` + 본 progress.md. 헤드리스 재검증: 셀프테스트 9/9 PASS, 메인 450프레임 exit 0.
+남은 후보: §4의 스폰 거리는 fallback 적용 완료. 추가 game-feel juice / 고아 `*.cs.uid` 10개 정리는 미착수.
+
+> 주의(env 부작용): mono Godot로 헤드리스 실행 시 `project.godot`에 `[dotnet]` 섹션이 주입되고
+> `renderer/rendering_method="forward_plus"`가 떨어진다. 요청 범위 밖이라 매번 `git checkout Game/project.godot`로
+> 되돌렸다. 재발하니 검증 후 정리하거나 non-mono Godot 사용 고려.
 
 ## 1. 검증 완료 사실 (재확인 불필요, 위에 쌓아라)
 
@@ -109,12 +115,12 @@ C#→GDScript는 구조 변경이므로 같은 작업에서 문서를 갱신해�
 — Godot 게임 작업과 무관.
 
 - [x] Phase A — 이해: Explore(맵+감사), general-purpose(설계↔코드 괴리·문서목록). **완료**(본 문서가 산출).
-- [ ] Phase B — Plan 에이전트: §4 후보를 우선순위화한 개선 계획. (저위험·design 정합·되돌리기 쉬운 것 우선,
-      재설계 금지.)
-- [ ] Phase C — game-maker 에이전트: 상위 개선 구현(예: 성배충돌 death FX, 스폰거리 fallback,
-      추가 game-feel juice). `.gd`만 수정.
-- [ ] Phase D — claude 에이전트: §3 문서 동기화 적용(`.gd` 코드와 disjoint 파일이라 Phase C와 병렬 가능).
-- [ ] 마지막: 내가(오케스트레이터) 헤드리스 재검증(Tests + Main 450프레임 exit 0) 후 회귀 없음 확인.
+- [x] Phase B — 개선 계획 우선순위화(다음 할일 10개로 정리, items 1~7 선택). **완료.**
+- [x] Phase C — game-maker: 성배충돌 death FX + 스폰거리 fallback 구현(`GameManager.gd`만 수정). **완료.**
+      (추가 game-feel juice는 item 8로 미착수.)
+- [x] Phase D — 문서 동기화 적용(items 1~5: CLAUDE.md/design.md/godot.md/plan.md). **완료.**
+- [x] 마지막: 오케스트레이터 헤드리스 재검증(Tests 9/9 PASS + Main 450프레임 exit 0, 회귀 없음). **완료.**
+- [ ] 미착수: item 8(추가 game-feel juice), item 9(고아 `*.cs.uid` 10개 + `.godot` 캐시 정리).
 
 ## 6. 재개 시 첫 명령(복붙용)
 
