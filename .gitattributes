@@ -2,3 +2,6 @@
 Game/scripts/*.glb filter=lfs diff=lfs merge=lfs -text
 Game/scripts/*.png filter=lfs diff=lfs merge=lfs -text
 Game/scripts/*.fbx filter=lfs diff=lfs merge=lfs -text
+
+# glbs/ subfolder — large .glb via LFS (tiny png/import stay in regular git)
+Game/scripts/glbs/*.glb filter=lfs diff=lfs merge=lfs -text
