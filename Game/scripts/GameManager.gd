@@ -6,6 +6,10 @@ var _state := State.PLAYING
 var _grail: Grail
 var _player: Player
 var _enemies: Array[Enemy] = []
+var _board: Board
+var _logs: Array[Log] = []
+var _coins: int = 0
+var _best: int = 0
 const MAX_ENEMIES := 6
 const MIN_ENEMY_SPAWN_DISTANCE := 10
 const SPAWN_DISTANCE_BAND := 6
@@ -13,13 +17,14 @@ const SPAWN_INTERVAL := 2.5
 var _spawn_timer := 0.0
 var _hud: Hud
 var _camera: Camera3D
-var _camera_offset := Vector3(0, 11, -8)
+const CAMERA_OFFSET := Vector3(0, 11, -8)
 const CAMERA_LOOK_AHEAD := 7.0  # Look ahead on +z so portrait framing keeps action lower.
 
 func _ready() -> void:
 	_setup_input()
 	_build_environment()
-	_build_ground()
+	_build_board()
+	_spawn_logs()
 
 	_hud = Hud.new()
 	add_child(_hud)
@@ -42,17 +47,32 @@ func _spawn_actors() -> void:
 	_hud.set_health(_grail.hp, _grail.max_hp)  # 초기값
 
 func _build_environment() -> void:
+	# 따뜻한 한낮 하늘 + 부드러운 앰비언트 (mokup1.png의 러시·밝은 무드).
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.3, 0.6, 0.85)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.4, 0.4, 0.4)
+	env.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.32, 0.62, 0.92)
+	sky_mat.sky_horizon_color = Color(0.78, 0.88, 0.95)
+	sky_mat.ground_horizon_color = Color(0.70, 0.82, 0.72)
+	sky_mat.ground_bottom_color = Color(0.45, 0.62, 0.42)
+	sky.sky_material = sky_mat
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_sky_contribution = 0.7
+	env.ambient_light_energy = 1.1
+	# 살짝 따뜻한 톤맵·약한 블룸으로 발광 포탈/성배가 빛나 보이게.
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.glow_enabled = true
+	env.glow_intensity = 0.3
 	we.environment = env
 	add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true
+	sun.light_energy = 1.3
+	sun.light_color = Color(1.0, 0.96, 0.86)
 	sun.rotation_degrees = Vector3(-50, -40, 0)
 	add_child(sun)
 
@@ -60,23 +80,30 @@ func _build_environment() -> void:
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	_camera.size = 7.0  # 직교 가시 폭(KeepAspect=Width 기준). 작을수록 줌인.
 	_camera.keep_aspect = Camera3D.KEEP_WIDTH
-	_camera.position = Vector3(GridUtil.COLS / 2.0, 11, -8)
+	_camera.position = Vector3(GridUtil.COLS / 2.0, 0, 0) + CAMERA_OFFSET
 	add_child(_camera)
 	_camera.current = true
 
-func _build_ground() -> void:
-	for x in GridUtil.COLS:
-		for z in GridUtil.ROWS:
-			var tile := MeshInstance3D.new()
-			var plane := PlaneMesh.new()
-			plane.size = Vector2(1, 1)
-			tile.mesh = plane
-			var even := (x + z) % 2 == 0
-			var mat := StandardMaterial3D.new()
-			mat.albedo_color = Color(0.55, 0.75, 0.45) if even else Color(0.5, 0.7, 0.4)
-			tile.material_override = mat
-			tile.position = GridUtil.cell_to_world(x, z, 0.0)
-			add_child(tile)
+func _build_board() -> void:
+	# 레인 타입별 색 타일 + 다리 + 가장자리 숲 + 빛나는 포탈을 Board가 코드-빌드.
+	_board = Board.new()
+	add_child(_board)
+
+func _spawn_logs() -> void:
+	# 강 레인마다 통나무 여러 개를 흩뿌려 흐르게 한다(레인별 방향/속도/위상).
+	for z in GridUtil.ROWS:
+		if not LaneConfig.is_water(z):
+			continue
+		var dir := LaneConfig.river_dir(z)
+		var speed := LaneConfig.river_speed(z)
+		var count := 3
+		for i in count:
+			var span := 2.4 + float((z + i) % 2) * 0.6
+			var start_x := -1.5 + float(i) * 6.5 + float(z % 3) * 2.0
+			var log := Log.new()
+			log.init(z, dir, speed, span, start_x)
+			add_child(log)
+			_logs.append(log)
 
 func _setup_input() -> void:
 	_add_key_action("move_up", [KEY_W, KEY_UP])
@@ -134,10 +161,13 @@ func _process(delta: float) -> void:
 		return
 
 	var focus := (_grail.position + _player.position) * 0.5
-	var desired := focus + _camera_offset
+	var desired := focus + CAMERA_OFFSET
 	_camera.position = _camera.position.lerp(desired, 1.0 - exp(-5.0 * delta))
 	var look_target := focus + Vector3(0, 0, CAMERA_LOOK_AHEAD)
 	_camera.look_at(look_target, Vector3.UP)
+
+	_resolve_water(delta)
+	_update_progress_hud()
 
 	_spawn_timer += delta
 	if _spawn_timer >= SPAWN_INTERVAL and _enemies.size() < MAX_ENEMIES:
@@ -155,18 +185,22 @@ func _process(delta: float) -> void:
 				e.queue_free()
 				_enemies.remove_at(i)
 				_player.knockback(-sep)
+				_award_coin()
 				continue
 			e.knockback(sep)
 			_player.knockback(-sep)
 			continue  # 방금 넉백된 적은 이 프레임에 성배 피해 X
 
-		# 적 ↔ 성배: HP -1, 적 소멸 (+ death 파티클)
+		# 적 ↔ 성배: 피해가 실제로 들어갔을 때만 적 소멸 (+ death 파티클).
 		if e.position.distance_to(_grail.position) < 0.6:
-			var death_pos := e.global_position  # queue_free 전에 위치 확보
-			_grail.take_damage()
-			_spawn_death_fx(death_pos)
-			e.queue_free()
-			_enemies.remove_at(i)
+			if _grail.take_damage():
+				_spawn_death_fx(e.global_position)  # queue_free 전에 위치 확보
+				e.queue_free()
+				_enemies.remove_at(i)
+				_award_coin()
+			else:
+				# 성배 무적 중 — 공짜 처치/FX 대신 적을 튕겨낸다(무적 끝나면 재충돌).
+				e.knockback(e.position - _grail.position)
 
 func _spawn_death_fx(pos: Vector3) -> void:
 	var fx := CPUParticles3D.new()
@@ -188,6 +222,50 @@ func _spawn_death_fx(pos: Vector3) -> void:
 		if is_instance_valid(fx):
 			fx.queue_free()
 	)
+
+func _award_coin() -> void:
+	_coins += 1
+	_hud.set_coins(_coins)
+
+func _update_progress_hud() -> void:
+	# 스코어 = 성배마차가 전진한 행 수. BEST는 세션 최고.
+	var score := _grail.get_cz()
+	if score > _best:
+		_best = score
+	_hud.set_score(score, _best)
+
+# 플레이어가 물에 빠진 상태면 통나무에 태우거나(드리프트) 익사 처리한다.
+func _resolve_water(delta: float) -> void:
+	if _player.is_hopping():
+		return
+	var pcx := _player.cx
+	var pcz := _player.cz
+	if not LaneConfig.is_drown_cell(pcx, pcz):
+		return
+	var carrier := _log_at(_player.position.x, pcz)
+	if carrier != null:
+		_player.ride(carrier.drift_dx(delta))
+		# 통나무에 실려 보드 밖으로 나가면 익사.
+		if _player.position.x < -0.6 or _player.position.x > float(GridUtil.COLS - 1) + 0.6:
+			_drown_player(pcz)
+	else:
+		_drown_player(pcz)
+
+func _log_at(world_x: float, cz: int) -> Log:
+	for log in _logs:
+		if log.cz == cz and log.covers_x(world_x):
+			return log
+	return null
+
+func _drown_player(cz: int) -> void:
+	var safe := _safe_row_below(cz)
+	_player.splash_reset(_player.cx, safe)
+
+func _safe_row_below(cz: int) -> int:
+	for z in range(cz - 1, -1, -1):
+		if not LaneConfig.is_water(z):
+			return z
+	return 0
 
 func _on_win() -> void:
 	if _state != State.PLAYING:
@@ -229,9 +307,12 @@ func _restart() -> void:
 
 	_state = State.PLAYING
 	_spawn_timer = 0.0
+	_coins = 0
 	_hud.hide_result()
+	_hud.set_coins(0)
+	_hud.set_score(0, _best)
 	_spawn_actors()
 
 	# Snap the camera onto the freshly reset actors so it doesn't slide in.
 	var focus := (_grail.position + _player.position) * 0.5
-	_camera.position = focus + _camera_offset
+	_camera.position = focus + CAMERA_OFFSET

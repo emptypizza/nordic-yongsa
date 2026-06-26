@@ -79,6 +79,36 @@ func _face_direction(dx: int, dz: int) -> void:
 	var yaw := atan2(dx, dz) + MODEL_YAW_OFFSET
 	_model.rotation = Vector3(0, yaw, 0)
 
+func is_hopping() -> bool:
+	return _hopping
+
+# 통나무에 실려 x축으로 떠내려감 (hop 중이 아닐 때만). 논리 셀 cx도 함께 갱신.
+func ride(dx_world: float) -> void:
+	if _hopping:
+		return
+	position.x += dx_world
+	cx = GridUtil.clamp_col(roundi(position.x / GridUtil.TILE_SIZE))
+
+# 익사 → 안전한 셀로 첨벙 복귀. 진행 중 hop/탑승을 무효화한다.
+func splash_reset(ncx: int, ncz: int) -> void:
+	cx = GridUtil.clamp_col(ncx)
+	cz = GridUtil.clamp_row(ncz)
+	_move_token += 1
+	_hopping = true
+	var move_token := _move_token
+	var target := GridUtil.cell_to_world(cx, cz, 0.0)
+	var tween := create_tween()
+	tween.tween_property(self, "position", target, 0.18).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(func() -> void:
+		if move_token == _move_token:
+			_hopping = false
+	)
+	# 첨벙 스쿼시 피드백.
+	var base := Vector3.ONE * 0.03
+	var sp := create_tween()
+	sp.tween_property(_model, "scale", base * Vector3(1.3, 0.6, 1.3), 0.08)
+	sp.tween_property(_model, "scale", base, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
 func knockback(away_dir: Vector3) -> void:
 	if away_dir.length_squared() < 0.0001:
 		return

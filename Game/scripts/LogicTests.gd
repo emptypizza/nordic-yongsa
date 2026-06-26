@@ -19,6 +19,25 @@ func _ready() -> void:
 	_check("clamp-col", GridUtil.clamp_col(99) == GridUtil.COLS - 1 and GridUtil.clamp_col(-5) == 0)
 	_check("clamp-row", GridUtil.clamp_row(99) == GridUtil.ROWS - 1 and GridUtil.clamp_row(-5) == 0)
 
+	# LaneConfig: 시작/포탈 안전지대는 항상 잔디(물 아님)
+	_check("lane-start-safe", not LaneConfig.is_water(0) and not LaneConfig.is_water(2))
+	_check("lane-goal-safe", not LaneConfig.is_water(GridUtil.ROWS - 1))
+	# 강 밴드는 물, 그 사이 잔디는 물 아님
+	_check("lane-river", LaneConfig.is_water(6) and LaneConfig.is_water(17))
+	_check("lane-nonriver", not LaneConfig.is_water(10))
+	# 다리: 중앙 칸은 안전, 가장자리 강 칸은 익사
+	var c := LaneConfig.bridge_center()
+	_check("bridge-center-safe", not LaneConfig.is_drown_cell(c, 6))
+	_check("bridge-edge-drown", LaneConfig.is_drown_cell(0, 6))
+	# 잔디 행은 어떤 칸도 익사 아님
+	_check("grass-no-drown", not LaneConfig.is_drown_cell(0, 10) and not LaneConfig.is_drown_cell(c, 10))
+	# 통나무 래핑: +방향 통나무가 우측 경계를 넘으면 좌측으로 재진입
+	var lg := Log.new()
+	lg.init(6, 1, 2.0, 2.6, float(GridUtil.COLS - 1) + 5.0)
+	lg._process(0.001)
+	_check("log-wrap", lg.position.x < 0.0)
+	lg.free()
+
 	print("[selftest] ALL PASS" if _fail == 0 else "[selftest] %d FAIL" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 

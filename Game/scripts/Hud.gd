@@ -1,109 +1,297 @@
 class_name Hud
 extends CanvasLayer
 
+# mokup1.png 기반 목업 HUD.
+# 상단: Guardian/HP·XP바/레벨 | 스코어 + BEST | 코인 + 일시정지
+# 하단: 영웅 카드 3장(라비/소희/아론) + 편집, "DRAG TO MOVE" 힌트
+# 입력: Crossy Road식 스와이프/탭(드래그). 데스크톱은 WASD/방향키.
+# 좌표계: 프로젝트 뷰포트 1080x1920(stretch=canvas_items) 기준.
+
 signal hop_requested(dir: Vector2i)
 signal retry_pressed
 signal menu_pressed
 
 var _hp_bar: ProgressBar
-var _hp_label: Label
-var _stage_label: Label
+var _score_label: Label
+var _best_label: Label
+var _coin_label: Label
 var _result_panel: Panel
 var _result_label: Label
+var _pause_label: Label
+var _paused := false
+
+const SWIPE_MIN := 80.0  # 이보다 짧은 드래그는 탭(전진)으로 처리
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS  # 일시정지 중에도 HUD 동작
 	_build_top_bar()
+	_build_drag_hint()
+	_build_hero_cards()
+	_build_pause_overlay()
 	_build_result_panel()
-	_build_dpad()
 
+# ── 스타일 헬퍼 ────────────────────────────────────────────────
+func _panel_style(bg: Color, radius: int, border_col: Color = Color(0, 0, 0, 0), border_w: int = 0) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.corner_radius_top_left = radius
+	sb.corner_radius_top_right = radius
+	sb.corner_radius_bottom_left = radius
+	sb.corner_radius_bottom_right = radius
+	if border_w > 0:
+		sb.border_color = border_col
+		sb.set_border_width_all(border_w)
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	return sb
+
+func _label(text: String, size: int, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_outline_color", Color(0.10, 0.12, 0.10, 0.85))
+	l.add_theme_constant_override("outline_size", 8)
+	return l
+
+# ── 상단 바 ────────────────────────────────────────────────────
 func _build_top_bar() -> void:
-	_stage_label = Label.new()
-	_stage_label.text = "STAGE 1"
-	_stage_label.position = Vector2(16, 12)
-	add_child(_stage_label)
+	# 좌측: Guardian, HQ + HP바 + 레벨
+	var left := Panel.new()
+	left.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.20, 0.16, 0.78), 22))
+	left.position = Vector2(28, 36)
+	left.custom_minimum_size = Vector2(440, 150)
+	left.size = Vector2(440, 150)
+	add_child(left)
 
-	_hp_label = Label.new()
-	_hp_label.text = "5 / 5"
-	_hp_label.position = Vector2(16, 36)
-	add_child(_hp_label)
+	var lv_badge := Panel.new()
+	lv_badge.add_theme_stylebox_override("panel", _panel_style(Color(0.95, 0.72, 0.18), 30, Color(1, 1, 1, 0.9), 4))
+	lv_badge.position = Vector2(16, 30)
+	lv_badge.custom_minimum_size = Vector2(96, 96)
+	lv_badge.size = Vector2(96, 96)
+	left.add_child(lv_badge)
+	var lv := _label("★\n80", 30, Color.WHITE)
+	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lv_badge.add_child(lv)
+
+	var title := _label("Guardian, HQ", 34, Color(0.96, 0.98, 0.92))
+	title.position = Vector2(128, 22)
+	left.add_child(title)
 
 	_hp_bar = ProgressBar.new()
 	_hp_bar.min_value = 0
 	_hp_bar.max_value = 5
 	_hp_bar.value = 5
 	_hp_bar.show_percentage = false
-	_hp_bar.position = Vector2(90, 36)
-	_hp_bar.custom_minimum_size = Vector2(180, 18)
-	add_child(_hp_bar)
+	_hp_bar.position = Vector2(128, 80)
+	_hp_bar.custom_minimum_size = Vector2(290, 40)
+	_hp_bar.size = Vector2(290, 40)
+	_hp_bar.add_theme_stylebox_override("background", _panel_style(Color(0.08, 0.10, 0.08, 0.9), 16))
+	_hp_bar.add_theme_stylebox_override("fill", _panel_style(Color(0.40, 0.85, 0.35), 16))
+	left.add_child(_hp_bar)
 
+	# 중앙: 큰 스코어 + BEST
+	_score_label = _label("0", 120, Color(1, 1, 1))
+	_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_score_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_score_label.offset_top = 20
+	_score_label.offset_bottom = 160
+	add_child(_score_label)
+
+	_best_label = _label("⚔ BEST 0", 38, Color(1, 0.92, 0.5))
+	_best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_best_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_best_label.offset_top = 152
+	_best_label.offset_bottom = 210
+	add_child(_best_label)
+
+	# 우측: 코인 + 일시정지
+	var coin_pill := Panel.new()
+	coin_pill.add_theme_stylebox_override("panel", _panel_style(Color(0.16, 0.20, 0.16, 0.78), 24))
+	coin_pill.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	coin_pill.offset_left = -260
+	coin_pill.offset_right = -120
+	coin_pill.offset_top = 40
+	coin_pill.offset_bottom = 110
+	add_child(coin_pill)
+	_coin_label = _label("🪙 0", 36, Color(1, 0.86, 0.3))
+	_coin_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_coin_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_coin_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	coin_pill.add_child(_coin_label)
+
+	var pause_btn := Button.new()
+	pause_btn.text = "II"
+	pause_btn.add_theme_font_size_override("font_size", 40)
+	pause_btn.add_theme_stylebox_override("normal", _panel_style(Color(0.30, 0.55, 0.95), 22))
+	pause_btn.add_theme_stylebox_override("hover", _panel_style(Color(0.36, 0.62, 1.0), 22))
+	pause_btn.add_theme_stylebox_override("pressed", _panel_style(Color(0.24, 0.46, 0.85), 22))
+	pause_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	pause_btn.offset_left = -104
+	pause_btn.offset_right = -28
+	pause_btn.offset_top = 40
+	pause_btn.offset_bottom = 116
+	pause_btn.pressed.connect(_toggle_pause)
+	add_child(pause_btn)
+
+# ── 드래그 힌트 ────────────────────────────────────────────────
+func _build_drag_hint() -> void:
+	var hint := _label("↑ DRAG TO MOVE", 34, Color(1, 1, 1, 0.85))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	hint.offset_top = -360
+	hint.offset_bottom = -300
+	add_child(hint)
+
+# ── 하단 영웅 카드 ─────────────────────────────────────────────
+func _build_hero_cards() -> void:
+	var bar := Control.new()
+	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_top = -280
+	bar.offset_bottom = -40
+	add_child(bar)
+
+	# 편집 버튼 (좌하단)
+	var edit := Button.new()
+	edit.text = "편집"
+	edit.add_theme_font_size_override("font_size", 32)
+	edit.add_theme_stylebox_override("normal", _panel_style(Color(0.20, 0.24, 0.20, 0.85), 18))
+	edit.add_theme_stylebox_override("hover", _panel_style(Color(0.26, 0.30, 0.26, 0.9), 18))
+	edit.add_theme_stylebox_override("pressed", _panel_style(Color(0.16, 0.20, 0.16, 0.9), 18))
+	edit.position = Vector2(36, 150)
+	edit.custom_minimum_size = Vector2(120, 90)
+	bar.add_child(edit)
+
+	# 영웅 카드 3장 (중앙 정렬)
+	var heroes := HeroRoster.all()
+	var card_w := 230.0
+	var gap := 24.0
+	var total := card_w * heroes.size() + gap * (heroes.size() - 1)
+	var start_x := (1080.0 - total) * 0.5
+	var active := HeroRoster.active_index()
+	for i in heroes.size():
+		var h = heroes[i]
+		_make_hero_card(bar, h, start_x + float(i) * (card_w + gap), card_w, i == active)
+
+func _make_hero_card(parent: Control, hero, x: float, w: float, selected: bool) -> void:
+	var card := Panel.new()
+	var bg := Color(0.95, 0.93, 0.86, 0.96)
+	var border_col := Color(0.30, 0.78, 0.40) if selected else Color(0.55, 0.50, 0.42)
+	var border_w := 8 if selected else 3
+	card.add_theme_stylebox_override("panel", _panel_style(bg, 22, border_col, border_w))
+	card.position = Vector2(x, 40)
+	card.custom_minimum_size = Vector2(w, 200)
+	card.size = Vector2(w, 200)
+	parent.add_child(card)
+
+	# 상단 영웅색 띠 (포트레이트 자리)
+	var portrait := Panel.new()
+	portrait.add_theme_stylebox_override("panel", _panel_style(hero.color, 16))
+	portrait.position = Vector2(16, 16)
+	portrait.custom_minimum_size = Vector2(w - 32, 110)
+	portrait.size = Vector2(w - 32, 110)
+	card.add_child(portrait)
+
+	var name_lbl := _label(hero.name, 36, Color(0.20, 0.18, 0.14))
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_constant_override("outline_size", 0)
+	name_lbl.position = Vector2(0, 132)
+	name_lbl.custom_minimum_size = Vector2(w, 46)
+	name_lbl.size = Vector2(w, 46)
+	card.add_child(name_lbl)
+
+	# 레벨 배지 (우상단)
+	var lv := Panel.new()
+	lv.add_theme_stylebox_override("panel", _panel_style(hero.color.darkened(0.1), 18, Color.WHITE, 3))
+	lv.position = Vector2(w - 56, 8)
+	lv.custom_minimum_size = Vector2(48, 48)
+	lv.size = Vector2(48, 48)
+	card.add_child(lv)
+	var lv_num := _label(str(hero.level), 28, Color.WHITE)
+	lv_num.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lv_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lv_num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lv_num.add_theme_constant_override("outline_size", 0)
+	lv.add_child(lv_num)
+
+	if selected:
+		var check := _label("✓", 36, Color(0.20, 0.70, 0.30))
+		check.position = Vector2(10, 4)
+		check.add_theme_constant_override("outline_size", 0)
+		card.add_child(check)
+
+# ── 일시정지 ───────────────────────────────────────────────────
+func _build_pause_overlay() -> void:
+	_pause_label = _label("PAUSED", 90, Color(1, 1, 1))
+	_pause_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pause_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_pause_label.offset_left = -300
+	_pause_label.offset_right = 300
+	_pause_label.offset_top = 700
+	_pause_label.offset_bottom = 840
+	_pause_label.visible = false
+	add_child(_pause_label)
+
+func _toggle_pause() -> void:
+	_paused = not _paused
+	get_tree().paused = _paused
+	_pause_label.visible = _paused
+
+# ── 결과 패널 ──────────────────────────────────────────────────
 func _build_result_panel() -> void:
 	_result_panel = Panel.new()
 	_result_panel.visible = false
-	_result_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_result_panel.custom_minimum_size = Vector2(320, 160)
-	_result_panel.position = Vector2(-160, -80)
+	_result_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.12, 0.14, 0.12, 0.95), 28, Color(1, 1, 1, 0.5), 4))
+	_result_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_result_panel.offset_left = -360
+	_result_panel.offset_right = 360
+	_result_panel.offset_top = -220
+	_result_panel.offset_bottom = 220
 	add_child(_result_panel)
 
-	_result_label = Label.new()
-	_result_label.text = ""
+	_result_label = _label("", 64, Color.WHITE)
 	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_result_label.position = Vector2(0, 24)
+	_result_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_result_label.offset_top = 50
+	_result_label.offset_bottom = 150
 	_result_panel.add_child(_result_label)
 
 	var retry := Button.new()
 	retry.text = "RETRY"
-	retry.custom_minimum_size = Vector2(120, 40)
-	retry.position = Vector2(24, 96)
-	retry.pressed.connect(func() -> void: retry_pressed.emit())
+	retry.add_theme_font_size_override("font_size", 40)
+	retry.add_theme_stylebox_override("normal", _panel_style(Color(0.30, 0.70, 0.35), 18))
+	retry.add_theme_stylebox_override("hover", _panel_style(Color(0.36, 0.78, 0.40), 18))
+	retry.add_theme_stylebox_override("pressed", _panel_style(Color(0.24, 0.60, 0.30), 18))
+	retry.position = Vector2(70, 250)
+	retry.custom_minimum_size = Vector2(250, 90)
+	retry.pressed.connect(func() -> void:
+		if _paused:
+			_toggle_pause()
+		retry_pressed.emit())
 	_result_panel.add_child(retry)
 
 	var menu := Button.new()
-	menu.text = "STAGE SELECT"
-	menu.custom_minimum_size = Vector2(150, 40)
-	menu.position = Vector2(150, 96)
+	menu.text = "STAGE"
+	menu.add_theme_font_size_override("font_size", 40)
+	menu.add_theme_stylebox_override("normal", _panel_style(Color(0.30, 0.55, 0.95), 18))
+	menu.add_theme_stylebox_override("hover", _panel_style(Color(0.36, 0.62, 1.0), 18))
+	menu.add_theme_stylebox_override("pressed", _panel_style(Color(0.24, 0.46, 0.85), 18))
+	menu.position = Vector2(400, 250)
+	menu.custom_minimum_size = Vector2(250, 90)
 	menu.pressed.connect(func() -> void: menu_pressed.emit())
 	_result_panel.add_child(menu)
 
-const DPAD_BTN := 144.0  # 3x of the old 48px button
-const DPAD_FONT := 64
-const DPAD_MARGIN := 36.0
-const SWIPE_MIN := 80.0  # min drag (design px) to count as a swipe; shorter = tap
-
+# ── 입력 (스와이프/탭) ─────────────────────────────────────────
 var _swipe_active := false
 var _swipe_start := Vector2.ZERO
 
-func _build_dpad() -> void:
-	# 모바일/마우스용 가상 d-pad (좌하단, 3배 크기 십자 배치). 같은 4방향 hop을 발생.
-	var c := DPAD_MARGIN
-	var s := DPAD_BTN
-	# 십자 배치: 가운데 열(상/하), 가운데 행(좌/우). bottom-left 앵커, y는 위로 갈수록 음수.
-	_add_dpad_button("▲", Vector2(c + s, -(c + 3 * s)), Vector2i(0, 1))
-	_add_dpad_button("◀", Vector2(c, -(c + 2 * s)), Vector2i(1, 0))
-	_add_dpad_button("▶", Vector2(c + 2 * s, -(c + 2 * s)), Vector2i(-1, 0))
-	_add_dpad_button("▼", Vector2(c + s, -(c + s)), Vector2i(0, -1))
-
-func _add_dpad_button(text: String, offset: Vector2, dir: Vector2i) -> void:
-	var btn := Button.new()
-	btn.text = text
-	btn.custom_minimum_size = Vector2(DPAD_BTN, DPAD_BTN)
-	btn.add_theme_font_size_override("font_size", DPAD_FONT)
-	btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	btn.position = offset
-	btn.pivot_offset = Vector2(DPAD_BTN, DPAD_BTN) * 0.5  # center pivot for punch scale
-	btn.pressed.connect(func() -> void: hop_requested.emit(dir))
-	btn.button_down.connect(func() -> void: _punch(btn))
-	add_child(btn)
-
-func _punch(node: Control) -> void:
-	# 누를 때 살짝 줄었다 돌아오는 쥬이시 피드백.
-	node.scale = Vector2.ONE
-	var tw := create_tween()
-	tw.tween_property(node, "scale", Vector2(0.86, 0.86), 0.05).set_trans(Tween.TRANS_QUAD)
-	tw.tween_property(node, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
 func _unhandled_input(event: InputEvent) -> void:
-	# Crossy Road식 스와이프/탭. d-pad 버튼은 자체 입력을 소비하므로 빈 화면에서만 동작.
+	if _paused:
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_swipe_active = true
@@ -116,15 +304,23 @@ func _resolve_gesture(delta: Vector2) -> void:
 	if delta.length() < SWIPE_MIN:
 		hop_requested.emit(Vector2i(0, 1))  # 탭 = 전진
 		return
+	# 카메라가 +z를 바라보므로 화면 좌우와 월드 x축이 반대다.
 	if absf(delta.x) > absf(delta.y):
 		hop_requested.emit(Vector2i(-1, 0) if delta.x > 0.0 else Vector2i(1, 0))
 	else:
 		hop_requested.emit(Vector2i(0, 1) if delta.y < 0.0 else Vector2i(0, -1))
 
+# ── 외부 갱신 API ──────────────────────────────────────────────
 func set_health(hp: int, max_hp: int) -> void:
 	_hp_bar.max_value = max_hp
 	_hp_bar.value = hp
-	_hp_label.text = "%d / %d" % [hp, max_hp]
+
+func set_score(score: int, best: int) -> void:
+	_score_label.text = str(score)
+	_best_label.text = "⚔ BEST %d" % best
+
+func set_coins(n: int) -> void:
+	_coin_label.text = "🪙 %d" % n
 
 func show_result(title: String, color: Color) -> void:
 	_result_label.text = title
