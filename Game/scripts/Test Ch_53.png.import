@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bh2p83a1667tq"
 path.s3tc="res://.godot/imported/Test Ch_53.png-b1b5ec71c03cc2be1a31c0a1349523ed.s3tc.ctex"
+path.etc2="res://.godot/imported/Test Ch_53.png-b1b5ec71c03cc2be1a31c0a1349523ed.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://scripts/Test Ch_53.png"
-dest_files=["res://.godot/imported/Test Ch_53.png-b1b5ec71c03cc2be1a31c0a1349523ed.s3tc.ctex"]
+dest_files=["res://.godot/imported/Test Ch_53.png-b1b5ec71c03cc2be1a31c0a1349523ed.s3tc.ctex", "res://.godot/imported/Test Ch_53.png-b1b5ec71c03cc2be1a31c0a1349523ed.etc2.ctex"]
 
 [params]
 

@@ -1,0 +1,99 @@
+class_name Player
+extends Node3D
+
+var cx: int = GridUtil.COLS / 2 + 1
+var cz: int = 0
+
+var _hopping := false
+var _move_token := 0
+var _model: Node3D
+
+# Godot forward(local -Z)를 이동 방향으로 돌리기 위한 보정각(+180°).
+const MODEL_YAW_OFFSET: float = PI
+
+func _ready() -> void:
+	_build_visual()
+	position = GridUtil.cell_to_world(cx, cz, 0.0)
+
+func _build_visual() -> void:
+	_model = load("res://scripts/Test Ch.glb").instantiate()
+	_model.scale = Vector3.ONE * 0.03
+	add_child(_model)
+
+	# Test Ch.glb에 내장된 Idle 애니메이션을 기본 루프 재생
+	var anim_node := _model.find_child("AnimationPlayer", true, false)
+	if anim_node is AnimationPlayer:
+		var ap: AnimationPlayer = anim_node
+		var clip := ap.get_animation("Idle")
+		if clip != null:
+			clip.loop_mode = Animation.LOOP_LINEAR
+		ap.play("Idle")
+
+func _process(_delta: float) -> void:
+	if _hopping:
+		return
+	# 누르고 있으면 hop 완료 후 다음 프레임에 연속 hop
+	if Input.is_action_pressed("move_up"):
+		try_hop(0, 1)
+	elif Input.is_action_pressed("move_down"):
+		try_hop(0, -1)
+	elif Input.is_action_pressed("move_left"):
+		try_hop(1, 0)
+	elif Input.is_action_pressed("move_right"):
+		try_hop(-1, 0)
+
+func try_hop(dx: int, dz: int) -> void:
+	if _hopping:
+		return
+	_face_direction(dx, dz)  # 경계에 막혀도 누른 방향은 바라본다
+	var nx := GridUtil.clamp_col(cx + dx)
+	var nz := GridUtil.clamp_row(cz + dz)
+	if nx == cx and nz == cz:
+		return  # 경계에 막힘
+	cx = nx
+	cz = nz
+	_hopping = true
+	_move_token += 1
+	var move_token := _move_token
+	var target := GridUtil.cell_to_world(cx, cz, 0.0)
+	var tween := create_tween()
+	tween.tween_property(self, "position", target, 0.12).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(func() -> void:
+		if move_token == _move_token:
+			_hopping = false
+	)
+	_hop_arc()
+
+func _hop_arc() -> void:
+	# Crossy Road식 깡총 점프 + 착지 스쿼시 (모델 로컬 변형만, 그리드 로직과 무관).
+	var arc := create_tween()
+	arc.tween_property(_model, "position:y", 0.35, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	arc.tween_property(_model, "position:y", 0.0, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var base := Vector3.ONE * 0.03
+	var squash := create_tween()
+	squash.tween_property(_model, "scale", base * Vector3(0.85, 1.2, 0.85), 0.06)
+	squash.tween_property(_model, "scale", base * Vector3(1.12, 0.82, 1.12), 0.05)
+	squash.tween_property(_model, "scale", base, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _face_direction(dx: int, dz: int) -> void:
+	var yaw := atan2(dx, dz) + MODEL_YAW_OFFSET
+	_model.rotation = Vector3(0, yaw, 0)
+
+func knockback(away_dir: Vector3) -> void:
+	if away_dir.length_squared() < 0.0001:
+		return
+	var base_pos := GridUtil.cell_to_world(cx, cz, 0.0)
+	var pushed := base_pos + away_dir.normalized() * GridUtil.TILE_SIZE
+	var cell := GridUtil.world_to_cell(pushed)
+	cx = GridUtil.clamp_col(cell.x)
+	cz = GridUtil.clamp_row(cell.y)
+	_hopping = true
+	_move_token += 1
+	var move_token := _move_token
+	var target := GridUtil.cell_to_world(cx, cz, 0.0)
+	var tween := create_tween()
+	tween.tween_property(self, "position", target, 0.15).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(func() -> void:
+		if move_token == _move_token:
+			_hopping = false
+	)

@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/StageSelect.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/StageSelect.gd" id="1"]
 
 [node name="StageSelect" type="CanvasLayer"]
 script = ExtResource("1")
