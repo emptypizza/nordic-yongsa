@@ -38,23 +38,23 @@
         256
       ],
       "component_mode": "all",
-      "component_count": 2,
+      "component_count": 1,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        2,
-        0,
-        248,
-        230
+        26,
+        61,
+        223,
+        166
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
-        101
+        57
       ],
       "paste_position": [
         10,
-        13
+        35
       ]
     },
     {
@@ -69,23 +69,23 @@
         256
       ],
       "component_mode": "all",
-      "component_count": 2,
+      "component_count": 1,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        1,
-        0,
-        248,
-        230
+        11,
+        61,
+        238,
+        166
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
-        101
+        50
       ],
       "paste_position": [
         10,
-        13
+        39
       ]
     },
     {
@@ -100,23 +100,23 @@
         512
       ],
       "component_mode": "all",
-      "component_count": 2,
+      "component_count": 1,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        2,
-        0,
-        248,
-        230
+        26,
+        61,
+        223,
+        166
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
-        101
+        57
       ],
       "paste_position": [
         10,
-        13
+        35
       ]
     },
     {
@@ -131,42 +131,25 @@
         512
       ],
       "component_mode": "all",
-      "component_count": 1,
+      "component_count": 3,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        8,
-        0,
-        248,
-        230
+        41,
+        61,
+        208,
+        168
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
-        104
+        69
       ],
       "paste_position": [
         10,
-        12
+        29
       ]
     }
   ],
-  "edge_touch_frames": [
-    [
-      0,
-      0
-    ],
-    [
-      0,
-      1
-    ],
-    [
-      1,
-      0
-    ],
-    [
-      1,
-      1
-    ]
-  ]
+  "edge_touch_frames": []
 }

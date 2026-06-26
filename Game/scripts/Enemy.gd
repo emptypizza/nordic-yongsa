@@ -22,10 +22,15 @@ const ENEMY_STRONG_GLB := "res://scripts/glbs/Boogeyman 01.glb"
 const STRONG_HEIGHT := 1.6
 const MODEL_YAW_OFFSET := PI
 
-# agent-sprite-forge(generate2dsprite)로 생성한 적 스프라이트 시트.
-# 파일이 있으면 빌보드로 사용하고, 없으면 프리미티브로 폴백한다.
-# 생성 경로: `Skill generate2dsprite` → 마젠타 raw → venv `generate2dsprite.py process` → 아래 경로로 저장.
-const GEN_SHEET := "res://scripts/gen/goblin/sheet-transparent.png"
+# generate2dsprite 파이프라인으로 만든 일반 몬스터 스프라이트 시트들(2x2 idle 빌보드).
+# 존재하는 것 중 하나를 랜덤으로 골라 써서 잡몹 종류에 변화를 준다. 하나도 없으면 프리미티브 폴백.
+# 생성: 마젠타 raw(make_*.py) → venv `generate2dsprite.py process` → 각 폴더 sheet-transparent.png.
+const GEN_SHEETS := [
+	"res://scripts/gen/goblin/sheet-transparent.png",
+	"res://scripts/gen/slime/sheet-transparent.png",
+	"res://scripts/gen/skeleton/sheet-transparent.png",
+	"res://scripts/gen/bat/sheet-transparent.png",
+]
 const GEN_COLS := 2
 const GEN_ROWS := 2
 
@@ -63,9 +68,13 @@ func _build_glb() -> bool:
 	return true
 
 func _build_sprite(is_strong: bool) -> bool:
-	if not ResourceLoader.exists(GEN_SHEET):
+	var avail: Array = []
+	for p in GEN_SHEETS:
+		if ResourceLoader.exists(p):
+			avail.append(p)
+	if avail.is_empty():
 		return false
-	var tex: Texture2D = load(GEN_SHEET)
+	var tex: Texture2D = load(avail[randi() % avail.size()])
 	if tex == null:
 		return false
 	_sprite = Sprite3D.new()

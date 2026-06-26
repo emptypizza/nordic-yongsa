@@ -38,16 +38,16 @@
         256
       ],
       "component_mode": "all",
-      "component_count": 2,
+      "component_count": 1,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        2,
-        0,
-        248,
-        230
+        24,
+        50,
+        224,
+        236
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
         101
@@ -69,23 +69,23 @@
         256
       ],
       "component_mode": "all",
-      "component_count": 2,
+      "component_count": 1,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        1,
-        0,
-        248,
-        230
+        35,
+        31,
+        213,
+        236
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
-        108,
-        101
+        94,
+        108
       ],
       "paste_position": [
-        10,
-        13
+        17,
+        10
       ]
     },
     {
@@ -100,16 +100,16 @@
         512
       ],
       "component_mode": "all",
-      "component_count": 2,
+      "component_count": 1,
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        2,
-        0,
-        248,
-        230
+        24,
+        50,
+        224,
+        236
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
         101
@@ -135,38 +135,21 @@
       "selected_component_area": null,
       "selected_component_bbox": null,
       "crop_bbox": [
-        8,
-        0,
-        248,
-        230
+        11,
+        69,
+        237,
+        236
       ],
-      "edge_touch": true,
+      "edge_touch": false,
       "output_size": [
         108,
-        104
+        80
       ],
       "paste_position": [
         10,
-        12
+        24
       ]
     }
   ],
-  "edge_touch_frames": [
-    [
-      0,
-      0
-    ],
-    [
-      0,
-      1
-    ],
-    [
-      1,
-      0
-    ],
-    [
-      1,
-      1
-    ]
-  ]
+  "edge_touch_frames": []
 }

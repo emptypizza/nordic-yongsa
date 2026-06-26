@@ -21,6 +21,7 @@ const CAMERA_OFFSET := Vector3(0, 11, -8)
 const CAMERA_LOOK_AHEAD := 7.0  # Look ahead on +z so portrait framing keeps action lower.
 
 func _ready() -> void:
+	randomize()  # 적 스폰 위치 + 일반몹 종류가 매 실행마다 달라지게 시드 초기화
 	_setup_input()
 	_build_environment()
 	_build_board()

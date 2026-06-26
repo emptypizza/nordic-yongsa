@@ -38,6 +38,14 @@ func _ready() -> void:
 	_check("log-wrap", lg.position.x < 0.0)
 	lg.free()
 
+	# 일반 몬스터 스프라이트 시트 4종이 모두 존재하고 Texture2D로 로드되는지
+	var spr_ok := Enemy.GEN_SHEETS.size() == 4
+	for p in Enemy.GEN_SHEETS:
+		var tex: Texture2D = load(p) if ResourceLoader.exists(p) else null
+		if tex == null:
+			spr_ok = false
+	_check("enemy-sprites-load", spr_ok)
+
 	print("[selftest] ALL PASS" if _fail == 0 else "[selftest] %d FAIL" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 

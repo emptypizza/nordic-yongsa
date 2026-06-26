@@ -94,7 +94,7 @@ Game/
     CharacterMesh.gd     # (신규) glbs/ 복셀 캐릭터를 타일 기준으로 정규화(고정 스케일+Idle 루프), pivot 래핑 로더
     Grail.gd             # 연속 전진, HP, 무적, Win/Death 신호 — 비주얼은 성배마차(몸체+캐노피+바퀴+발광 성배) + 호위 동행 3명
     Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌, 통나무 탑승(ride)/익사 복귀(splash_reset). 메시=활성 영웅 glb(pivot)
-    Enemy.gd             # 연속 직각 그리드 추적, 충돌 판정(1칸 넉백). 메시=일반몹→고블린 스프라이트 / 강한적→Boogeyman glb, 폴백=프리미티브
+    Enemy.gd             # 연속 직각 그리드 추적, 충돌 판정(1칸 넉백). 메시=일반몹→스프라이트 4종 랜덤(고블린/슬라임/스켈레톤/박쥐) / 강한적→Boogeyman glb, 폴백=프리미티브
     Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인/일시정지) + 하단 영웅카드 + 스와이프 입력
     WindowFit.gd         # autoload: 데스크톱 창을 9:16으로 리사이즈(모바일/헤드리스 비활성)
     LogicTests.gd        # GridUtil + LaneConfig + Log 헤드리스 셀프테스트, Tests.tscn으로 실행(18/18 PASS)
@@ -125,8 +125,9 @@ Game/
     깡총 hop 아크+착지 스쿼시(pivot scale), 이동 방향 회전, 익사 시 첨벙 스쿼시.
     **주인공은 노란머리**: 머리카락 파츠(이름 `ha*`/`hha*`, 68개)만 `CharacterMesh.recolor_parts`로
     노란 단색 `material_override`(머리·얼굴 `h$$` 등은 제외). Player에서만 적용(동행/적 무관).
-  - 적: **일반 몬스터(잡몹)는 고블린 스프라이트**(sprite-forge `gen/goblin/`, 빌보드, 4프레임 idle),
-    **강한 적은 `Boogeyman 01.glb`**(크고 느림, 3D 메시, 이동 방향 회전 + 기절 흔들림). 둘 다 없으면 프리미티브 박스 폴백.
+  - 적: **일반 몬스터(잡몹)는 스프라이트 4종 중 랜덤**(sprite-forge `gen/{goblin,slime,skeleton,bat}/`,
+    빌보드 2x2 idle) — 잡몹마다 종류가 달라 변화를 준다. **강한 적은 `Boogeyman 01.glb`**(크고 느림, 3D 메시,
+    이동 방향 회전 + 기절 흔들림). 둘 다 없으면 프리미티브 박스 폴백.
 
 ## 7. 실시간 루프
 
