@@ -44,7 +44,36 @@ func _spawn_actors() -> void:
 	_player = Player.new()
 	add_child(_player)
 
+	_spawn_companions()
+
 	_hud.set_health(_grail.hp, _grail.max_hp)  # 초기값
+
+const CROW_GLB := "res://scripts/glbs/Crow.glb"
+
+func _spawn_companions() -> void:
+	# 마차(Grail)를 호위하며 함께 전진하는 동행(코스메틱). 마차에 붙여 위치를 따라가게 한다.
+	# 비선택 영웅 2명(Healer/Wizard) + Crow → 일반 몬스터를 고블린 스프라이트로 되돌려도
+	# 5개 glb(플레이어=Warrior, 강한 적=Boogeyman, 동행=Healer/Wizard/Crow)가 모두 화면에 보인다.
+	var escorts: Array[String] = []
+	var heroes := HeroRoster.all()
+	var active := HeroRoster.active_index()
+	for i in heroes.size():
+		if i != active:
+			escorts.append(heroes[i].glb)
+	escorts.append(CROW_GLB)  # 까마귀 동행(마차 뒤)
+	var offsets := [Vector3(-1.15, 0.0, -0.25), Vector3(1.15, 0.0, -0.25), Vector3(0.0, 0.0, -1.35)]
+	for j in escorts.size():
+		if j >= offsets.size():
+			break
+		var built := CharacterMesh.build(escorts[j], 1.15, ["Idle", "Idle01"])
+		if built.is_empty():
+			continue
+		var pivot: Node3D = built["pivot"]
+		pivot.position = offsets[j]
+		pivot.rotation.y = PI  # 전진(+z)을 바라보게
+		if built.get("anim") != null:
+			CharacterMesh.play_loop(built["anim"], ["Walk01", "Idle01", "Idle"])
+		_grail.add_child(pivot)
 
 func _build_environment() -> void:
 	# 따뜻한 한낮 하늘 + 부드러운 앰비언트 (mokup1.png의 러시·밝은 무드).
@@ -151,7 +180,8 @@ func _spawn_enemy() -> void:
 		cell = Vector2i(fcx, fcz)
 
 	var enemy := Enemy.new()
-	var hp: int = 1 if randf() < 0.7 else randi_range(2, 3)
+	# 일반 몬스터(고블린 스프라이트) 85% / 강한 적(Boogeyman glb) 15% — 보스급 등장 빈도를 낮춤.
+	var hp: int = 1 if randf() < 0.85 else randi_range(2, 3)
 	enemy.init(_grail, cell, hp)
 	add_child(enemy)
 	_enemies.append(enemy)

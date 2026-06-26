@@ -6,28 +6,31 @@ var cz: int = 0
 
 var _hopping := false
 var _move_token := 0
-var _model: Node3D
+var _model: Node3D       # pivot 노드 (hop/squash/회전 대상). 안쪽에 fit된 영웅 glb.
+var _anim: AnimationPlayer
 
 # Godot forward(local -Z)를 이동 방향으로 돌리기 위한 보정각(+180°).
 const MODEL_YAW_OFFSET: float = PI
+const HERO_HEIGHT := 1.3            # 1타일보다 살짝 큰 영웅 키(Test Ch ≈1.24와 유사)
+const FALLBACK_GLB := "res://scripts/Test Ch.glb"
 
 func _ready() -> void:
 	_build_visual()
 	position = GridUtil.cell_to_world(cx, cz, 0.0)
 
 func _build_visual() -> void:
-	_model = load("res://scripts/Test Ch.glb").instantiate()
-	_model.scale = Vector3.ONE * 0.03
+	# 활성 영웅(HeroRoster) glb를 CharacterMesh로 자동 fit. 없으면 Test Ch로 폴백.
+	var hero = HeroRoster.active_hero()
+	var built := CharacterMesh.build(hero.glb, HERO_HEIGHT)
+	if built.is_empty():
+		built = CharacterMesh.build(FALLBACK_GLB, HERO_HEIGHT)
+	if built.is_empty():
+		_model = Node3D.new()  # 최후 폴백: 빈 pivot (게임 로직은 유지).
+		add_child(_model)
+		return
+	_model = built["pivot"]
 	add_child(_model)
-
-	# Test Ch.glb에 내장된 Idle 애니메이션을 기본 루프 재생
-	var anim_node := _model.find_child("AnimationPlayer", true, false)
-	if anim_node is AnimationPlayer:
-		var ap: AnimationPlayer = anim_node
-		var clip := ap.get_animation("Idle")
-		if clip != null:
-			clip.loop_mode = Animation.LOOP_LINEAR
-		ap.play("Idle")
+	_anim = built.get("anim")
 
 func _process(_delta: float) -> void:
 	if _hopping:
@@ -69,7 +72,7 @@ func _hop_arc() -> void:
 	var arc := create_tween()
 	arc.tween_property(_model, "position:y", 0.35, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	arc.tween_property(_model, "position:y", 0.0, 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	var base := Vector3.ONE * 0.03
+	var base := Vector3.ONE
 	var squash := create_tween()
 	squash.tween_property(_model, "scale", base * Vector3(0.85, 1.2, 0.85), 0.06)
 	squash.tween_property(_model, "scale", base * Vector3(1.12, 0.82, 1.12), 0.05)
@@ -104,7 +107,7 @@ func splash_reset(ncx: int, ncz: int) -> void:
 			_hopping = false
 	)
 	# 첨벙 스쿼시 피드백.
-	var base := Vector3.ONE * 0.03
+	var base := Vector3.ONE
 	var sp := create_tween()
 	sp.tween_property(_model, "scale", base * Vector3(1.3, 0.6, 1.3), 0.08)
 	sp.tween_property(_model, "scale", base, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

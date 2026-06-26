@@ -6,13 +6,21 @@ var hp: int = 0
 var stun: float = 0.0
 
 var _grail: Grail
-var _visual: Node3D          # 흔들림/회전 대상 (박스 또는 스프라이트)
+var _visual: Node3D          # 흔들림/회전 대상 (glb pivot · 박스 · 스프라이트)
+var _model: Node3D           # glb 모드일 때 pivot(=_visual). 이동 방향 facing 대상.
+var _anim: AnimationPlayer   # glb 모드일 때만
 var _mesh: MeshInstance3D    # 프리미티브 모드일 때만
 var _sprite: Sprite3D        # sprite-forge 생성 시트가 있을 때만
 var _anim_t: float = 0.0
 var _cell: Vector2i
 var _target_pos: Vector3
 var _has_target := false
+
+# 적 메시: 일반 몬스터(잡몹)=고블린 스프라이트(sprite-forge), 강한 적=Boogeyman glb(크고 느림).
+# 둘 다 없으면 프리미티브 박스로 폴백. (Crow glb는 GameManager에서 마차 호위 동료로 사용)
+const ENEMY_STRONG_GLB := "res://scripts/glbs/Boogeyman 01.glb"
+const STRONG_HEIGHT := 1.6
+const MODEL_YAW_OFFSET := PI
 
 # agent-sprite-forge(generate2dsprite)로 생성한 적 스프라이트 시트.
 # 파일이 있으면 빌보드로 사용하고, 없으면 프리미티브로 폴백한다.
@@ -34,9 +42,25 @@ func _ready() -> void:
 func _build_visual() -> void:
 	var is_strong := hp >= 2
 	speed = 1.4 if is_strong else 1.6
+	# 강한 적만 Boogeyman 3D 메시. 일반 몬스터는 고블린 스프라이트로.
+	if is_strong and _build_glb():
+		return
 	if _build_sprite(is_strong):
 		return
 	_build_primitive(is_strong)
+
+func _build_glb() -> bool:
+	var built := CharacterMesh.build(ENEMY_STRONG_GLB, STRONG_HEIGHT, ["Idle", "Idle01", "Idle02"])
+	if built.is_empty():
+		return false
+	_model = built["pivot"]
+	_visual = _model
+	_anim = built.get("anim")
+	# 강한 적은 늘 성배를 향해 묵직하게 전진 → Walk 루프.
+	if _anim != null:
+		CharacterMesh.play_loop(_anim, ["Walk01", "Chase01", "Run01", "Idle"])
+	add_child(_model)
+	return true
 
 func _build_sprite(is_strong: bool) -> bool:
 	if not ResourceLoader.exists(GEN_SHEET):
@@ -110,11 +134,19 @@ func _process(delta: float) -> void:
 		if _visual != null:
 			_visual.rotation = Vector3(0, randf() * 0.5, 0)  # 기절 흔들림
 		return
-	if _visual != null:
-		_visual.rotation = Vector3.ZERO
 
 	if not _has_target:
 		_pick_next_target()
+
+	# glb 모드: 이동 방향을 바라본다. 프리미티브/스프라이트: 기절 흔들림만 리셋.
+	if _model != null:
+		var to := _target_pos - position
+		if Vector2(to.x, to.z).length_squared() > 0.000001:
+			_model.rotation.y = atan2(to.x, to.z) + MODEL_YAW_OFFSET
+	elif _visual != null:
+		_visual.rotation = Vector3.ZERO
+
+	if not _has_target:
 		return
 
 	position = position.move_toward(_target_pos, speed * delta)

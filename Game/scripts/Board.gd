@@ -8,7 +8,10 @@ extends Node3D
 # - 끝 행의 빛나는 파란 포탈(골)
 # 프로젝트 규칙: 액터/배경 모두 코드-빌드, 메시는 자식 노드, 프리미티브 placeholder.
 
+const TILE_DIR := "res://scripts/gen/map/tiles/"
+
 var _mat_cache: Dictionary = {}
+var _tex_cache: Dictionary = {}
 var _portal_core: MeshInstance3D
 var _portal_ring: MeshInstance3D
 var _water_tiles: Array[MeshInstance3D] = []
@@ -31,6 +34,41 @@ func _mat(color: Color, emission: Color = Color.BLACK, energy: float = 1.0) -> S
 	_mat_cache[key] = m
 	return m
 
+func _load_tex(tex_name: String) -> Texture2D:
+	if _tex_cache.has(tex_name):
+		return _tex_cache[tex_name]
+	var path := TILE_DIR + tex_name + ".png"
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	_tex_cache[tex_name] = tex
+	return tex
+
+func _ground_mat(tex: Texture2D, tint: Color, emission: Color, energy: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.albedo_color = tint
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	if emission != Color.BLACK:
+		m.emission_enabled = true
+		m.emission = emission
+		m.emission_energy_multiplier = energy
+	return m
+
+# 잔디/길/물처럼 명암 교차(even/odd)가 필요한 레인용. 같은 텍스처에 밝기 틴트만 다르게.
+func _ground_pair(tex_name: String, flat_a: Color, flat_b: Color, emission: Color = Color.BLACK, energy: float = 1.0) -> Array:
+	var tex := _load_tex(tex_name)
+	if tex == null:
+		return [_mat(flat_a, emission, energy), _mat(flat_b, emission, energy)]
+	return [
+		_ground_mat(tex, Color(1.0, 1.0, 1.0), emission, energy),
+		_ground_mat(tex, Color(0.87, 0.91, 0.83), emission, energy),
+	]
+
+func _ground_single(tex_name: String, flat: Color, emission: Color = Color.BLACK, energy: float = 1.0) -> StandardMaterial3D:
+	var tex := _load_tex(tex_name)
+	if tex == null:
+		return _mat(flat, emission, energy)
+	return _ground_mat(tex, Color.WHITE, emission, energy)
+
 static func _hash2(a: int, b: int) -> int:
 	var h := (a * 73856093) ^ (b * 19349663)
 	return absi(h)
@@ -47,13 +85,17 @@ func _tile(cx: int, cz: int, y: float, mat: StandardMaterial3D) -> MeshInstance3
 
 func _build_tiles() -> void:
 	# 레인별 팔레트 (살짝 명암 교차해 손맛 있는 잔디 느낌).
-	var grass_a := _mat(Color(0.46, 0.73, 0.31))
-	var grass_b := _mat(Color(0.41, 0.68, 0.28))
-	var path_a := _mat(Color(0.64, 0.49, 0.33))
-	var path_b := _mat(Color(0.58, 0.44, 0.29))
-	var water_a := _mat(Color(0.20, 0.55, 0.86), Color(0.05, 0.18, 0.32), 0.6)
-	var water_b := _mat(Color(0.16, 0.48, 0.80), Color(0.04, 0.15, 0.28), 0.6)
-	var plank := _mat(Color(0.55, 0.40, 0.24))
+	# 절차적 톱다운 타일 텍스처가 있으면 입히고, 없으면 평면 색으로 폴백한다.
+	var grass := _ground_pair("grass", Color(0.46, 0.73, 0.31), Color(0.41, 0.68, 0.28))
+	var path := _ground_pair("path", Color(0.64, 0.49, 0.33), Color(0.58, 0.44, 0.29))
+	var water := _ground_pair("water", Color(0.20, 0.55, 0.86), Color(0.16, 0.48, 0.80), Color(0.05, 0.18, 0.32), 0.6)
+	var grass_a: StandardMaterial3D = grass[0]
+	var grass_b: StandardMaterial3D = grass[1]
+	var path_a: StandardMaterial3D = path[0]
+	var path_b: StandardMaterial3D = path[1]
+	var water_a: StandardMaterial3D = water[0]
+	var water_b: StandardMaterial3D = water[1]
+	var plank := _ground_single("plank", Color(0.55, 0.40, 0.24))
 
 	for z in GridUtil.ROWS:
 		var lane := LaneConfig.lane_type(z)
