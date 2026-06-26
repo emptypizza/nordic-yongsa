@@ -63,6 +63,24 @@ static func _set_loop(ap: AnimationPlayer, anim_name: String) -> void:
 	if clip != null:
 		clip.loop_mode = Animation.LOOP_LINEAR
 
+# 이름이 prefixes 중 하나로 시작하는 MeshInstance3D에 단색 material_override를 입힌다.
+# 복셀 캐릭터는 파츠별 메시라, 머리카락 파츠(예: Warrior의 "ha"/"hha")만 골라 색을 바꿀 수 있다.
+# 반환: 색칠한 메시 수. (material_override는 텍스처를 무시한 평면색 → 깔끔한 단색)
+static func recolor_parts(root: Node, prefixes: Array, color: Color) -> int:
+	var n := 0
+	if root is MeshInstance3D:
+		var ln := root.name.to_lower()
+		for p in prefixes:
+			if ln.begins_with(p):
+				var m := StandardMaterial3D.new()
+				m.albedo_color = color
+				(root as MeshInstance3D).material_override = m
+				n += 1
+				break
+	for c in root.get_children():
+		n += recolor_parts(c, prefixes, color)
+	return n
+
 static func _find_anim(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
 		return node

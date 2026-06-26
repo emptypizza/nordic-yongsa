@@ -123,6 +123,8 @@ Game/
   - 통나무: x축으로 눕힌 갈색 원기둥(+밝은 결 스트라이프), 강 레인을 따라 드리프트.
   - 용사: **활성 영웅 glb**(라비=Warrior 01.glb) — `CharacterMesh`로 타일 기준 정규화, Idle 루프 +
     깡총 hop 아크+착지 스쿼시(pivot scale), 이동 방향 회전, 익사 시 첨벙 스쿼시.
+    **주인공은 노란머리**: 머리카락 파츠(이름 `ha*`/`hha*`, 68개)만 `CharacterMesh.recolor_parts`로
+    노란 단색 `material_override`(머리·얼굴 `h$$` 등은 제외). Player에서만 적용(동행/적 무관).
   - 적: **일반 몬스터(잡몹)는 고블린 스프라이트**(sprite-forge `gen/goblin/`, 빌보드, 4프레임 idle),
     **강한 적은 `Boogeyman 01.glb`**(크고 느림, 3D 메시, 이동 방향 회전 + 기절 흔들림). 둘 다 없으면 프리미티브 박스 폴백.
 
@@ -134,7 +136,10 @@ Game/
 ## 8. 프로토타입 범위 밖 (out of scope)
 
 - 다중 스테이지, 세이브/로드, 사운드, 타이틀/메뉴 연출 고도화
-- 실제 voxel/lowpoly 에셋 임포트: **완료** — 영웅(Warrior=플레이어)·동행(Healer/Wizard/Crow)·강한 적(Boogeyman)에 `glbs/` 메시 적용,
+- 에셋 주의: `Game/scripts/glbs/`의 `*_N.png`(개당 ~100~200B, 약 2232개)는 **glTF가 추출한 머티리얼 팔레트 텍스처**로,
+  임포트된 GLB 메시의 `StandardMaterial3D.albedo_texture`가 `res://scripts/glbs/<name>_N.png`로 **실제 참조**한다(복셀 파츠별 색).
+  → **삭제 금지**(지우면 머티리얼 색이 깨짐). LFS는 `.glb` 원본만, 작은 PNG는 일반 추적.
+- 실제 voxel/lowpoly 에셋 임포트: **완료** — 영웅(Warrior=플레이어, 노란머리)·동행(Healer/Wizard/Crow)·강한 적(Boogeyman)에 `glbs/` 메시 적용,
   일반 몬스터는 고블린 스프라이트, 바닥은 절차적 타일 텍스처. 성배마차/숲/포탈/통나무는 프리미티브 유지. (남은 과제: 성능 — glb당 메시 인스턴스가 많아
   draw call이 큼. 동시 표시가 많으면 메시 병합/LOD 최적화 필요. 동료 표시는 `GameManager._spawn_companions`로 토글 가능.)
 - 모바일 빌드 최적화(키보드 우선 검증, 가상 d-pad/스와이프는 함께 넣되 데스크톱에서 1차 검증)

@@ -13,6 +13,9 @@ var _anim: AnimationPlayer
 const MODEL_YAW_OFFSET: float = PI
 const HERO_HEIGHT := 1.3            # 1타일보다 살짝 큰 영웅 키(Test Ch ≈1.24와 유사)
 const FALLBACK_GLB := "res://scripts/Test Ch.glb"
+# 주인공은 노란머리. Warrior glb의 머리카락 파츠(이름 ha*/hha*)만 노란색으로 칠한다.
+const HAIR_COLOR := Color(0.96, 0.80, 0.20)
+const HAIR_PREFIXES := ["hha", "ha"]
 
 func _ready() -> void:
 	_build_visual()
@@ -31,6 +34,10 @@ func _build_visual() -> void:
 	_model = built["pivot"]
 	add_child(_model)
 	_anim = built.get("anim")
+	# 주인공 노란머리: 머리카락 파츠만 골라 노란색으로.
+	var model = built.get("model")
+	if model != null:
+		CharacterMesh.recolor_parts(model, HAIR_PREFIXES, HAIR_COLOR)
 
 func _process(_delta: float) -> void:
 	if _hopping:
