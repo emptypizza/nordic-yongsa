@@ -1,7 +1,7 @@
 class_name HeroRoster
 
 # 영웅 로스터 (mokup1.png 하단 카드: 라비 / 소희 / 아론).
-# 목업 단계에서는 이름·테마색·레벨만. 능력 전환은 후속 작업.
+# 활성 영웅·레벨은 SaveManager에 영속화된다(autoload, 항상 준비됨). 카드 탭으로 라이브 교체.
 
 class Hero:
 	var id: String
@@ -16,16 +16,32 @@ class Hero:
 		level = p_level
 		glb = p_glb
 
-static func all() -> Array:
-	return [
-		Hero.new("ravi", "라비", Color(0.45, 0.62, 0.95), 1, "res://scripts/glbs/Warrior 01.glb"),  # 검사/전사
-		Hero.new("sohee", "소희", Color(0.95, 0.55, 0.72), 1, "res://scripts/glbs/Healer 01.glb"),  # 힐러
-		Hero.new("aron", "아론", Color(0.85, 0.45, 0.28), 1, "res://scripts/glbs/Wizard 01.glb"),   # 마법사
-	]
+# 불변 정의(레벨은 세이브에서 주입). 인덱스 = 카드 순서.
+const DEFS := [
+	{"id": "ravi", "name": "라비", "color": Color(0.45, 0.62, 0.95), "glb": "res://scripts/glbs/Warrior 01.glb"},
+	{"id": "sohee", "name": "소희", "color": Color(0.95, 0.55, 0.72), "glb": "res://scripts/glbs/Healer 01.glb"},
+	{"id": "aron", "name": "아론", "color": Color(0.85, 0.45, 0.28), "glb": "res://scripts/glbs/Wizard 01.glb"},
+]
 
-# 플레이어가 현재 조작하는 기본 영웅(라비 = Warrior).
+static func count() -> int:
+	return DEFS.size()
+
+static func all() -> Array:
+	var out := []
+	for d in DEFS:
+		out.append(Hero.new(d["id"], d["name"], d["color"], SaveManager.get_hero_level(d["id"]), d["glb"]))
+	return out
+
+static func hero_at(index: int) -> Hero:
+	var d = DEFS[clampi(index, 0, DEFS.size() - 1)]
+	return Hero.new(d["id"], d["name"], d["color"], SaveManager.get_hero_level(d["id"]), d["glb"])
+
+# 플레이어가 현재 조작하는 영웅(세이브 영속). 기본 라비(0).
 static func active_index() -> int:
-	return 0
+	return clampi(SaveManager.get_active_hero(), 0, DEFS.size() - 1)
+
+static func set_active_index(index: int) -> void:
+	SaveManager.set_active_hero(clampi(index, 0, DEFS.size() - 1))
 
 static func active_hero() -> Hero:
-	return all()[active_index()]
+	return hero_at(active_index())

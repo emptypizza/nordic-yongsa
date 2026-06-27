@@ -39,6 +39,14 @@ func _build_visual() -> void:
 	if model != null:
 		CharacterMesh.recolor_parts(model, HAIR_PREFIXES, HAIR_COLOR)
 
+# 활성 영웅이 바뀌면 메시만 교체(그리드 셀·hop 상태는 유지).
+func rebuild_visual() -> void:
+	if _model != null and is_instance_valid(_model):
+		_model.queue_free()
+	_model = null
+	_anim = null
+	_build_visual()
+
 func _process(_delta: float) -> void:
 	if _hopping:
 		return
@@ -63,6 +71,7 @@ func try_hop(dx: int, dz: int) -> void:
 	cx = nx
 	cz = nz
 	_hopping = true
+	AudioManager.sfx("hop", 0.06)
 	_move_token += 1
 	var move_token := _move_token
 	var target := GridUtil.cell_to_world(cx, cz, 0.0)

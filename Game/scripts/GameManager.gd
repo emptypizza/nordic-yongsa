@@ -6,14 +6,18 @@ var _state := State.PLAYING
 var _grail: Grail
 var _player: Player
 var _enemies: Array[Enemy] = []
+var _companions: Array[Node3D] = []
 var _board: Board
 var _logs: Array[Log] = []
 var _coins: int = 0
 var _best: int = 0
-const MAX_ENEMIES := 6
+# 스폰 난이도는 StageState.config()에서 스테이지별로 채운다(_apply_stage_config).
+var _max_enemies := 6
 const MIN_ENEMY_SPAWN_DISTANCE := 10
 const SPAWN_DISTANCE_BAND := 6
-const SPAWN_INTERVAL := 2.5
+var _spawn_interval := 2.5
+var _strong_chance := 0.15
+var _enemy_speed_mul := 1.0
 var _spawn_timer := 0.0
 var _hud: Hud
 var _camera: Camera3D
@@ -22,6 +26,9 @@ const CAMERA_LOOK_AHEAD := 7.0  # Look ahead on +z so portrait framing keeps act
 
 func _ready() -> void:
 	randomize()  # 적 스폰 위치 + 일반몹 종류가 매 실행마다 달라지게 시드 초기화
+	_apply_stage_config()
+	_best = SaveManager.get_best()
+	AudioManager.play_bgm("gameplay")
 	_setup_input()
 	_build_environment()
 	_build_board()
@@ -32,6 +39,7 @@ func _ready() -> void:
 	_hud.hop_requested.connect(func(dir: Vector2i) -> void: _player.try_hop(dir.x, dir.y))
 	_hud.retry_pressed.connect(_restart)
 	_hud.menu_pressed.connect(func() -> void: get_tree().change_scene_to_file("res://StageSelect.tscn"))
+	_hud.hero_selected.connect(_on_hero_selected)
 
 	_spawn_actors()
 
@@ -55,6 +63,7 @@ func _spawn_companions() -> void:
 	# 마차(Grail)를 호위하며 함께 전진하는 동행(코스메틱). 마차에 붙여 위치를 따라가게 한다.
 	# 비선택 영웅 2명(Healer/Wizard) + Crow → 일반 몬스터를 고블린 스프라이트로 되돌려도
 	# 5개 glb(플레이어=Warrior, 강한 적=Boogeyman, 동행=Healer/Wizard/Crow)가 모두 화면에 보인다.
+	_companions.clear()
 	var escorts: Array[String] = []
 	var heroes := HeroRoster.all()
 	var active := HeroRoster.active_index()
@@ -75,6 +84,34 @@ func _spawn_companions() -> void:
 		if built.get("anim") != null:
 			CharacterMesh.play_loop(built["anim"], ["Walk01", "Idle01", "Idle"])
 		_grail.add_child(pivot)
+		_companions.append(pivot)
+
+# 영웅 카드 탭 → 활성 영웅 라이브 교체. 플레이어 메시·동행을 다시 만들고 HUD 하이라이트를 옮긴다.
+func _on_hero_selected(index: int) -> void:
+	if index == HeroRoster.active_index():
+		return
+	HeroRoster.set_active_index(index)
+	AudioManager.sfx("power_up")
+	if is_instance_valid(_player):
+		_player.rebuild_visual()
+	_respawn_companions()
+	_hud.refresh_hero_cards()
+
+func _respawn_companions() -> void:
+	for c in _companions:
+		if is_instance_valid(c):
+			c.queue_free()
+	_companions.clear()
+	if is_instance_valid(_grail):
+		_spawn_companions()
+
+func _apply_stage_config() -> void:
+	# 선택된 스테이지의 난이도를 스폰 파라미터에 반영(보드는 동일, 적 압박만 달라진다).
+	var cfg := StageState.config()
+	_spawn_interval = float(cfg.get("spawn_interval", _spawn_interval))
+	_max_enemies = int(cfg.get("max_enemies", _max_enemies))
+	_strong_chance = float(cfg.get("strong_chance", _strong_chance))
+	_enemy_speed_mul = float(cfg.get("enemy_speed_mul", _enemy_speed_mul))
 
 func _build_environment() -> void:
 	# 따뜻한 한낮 하늘 + 부드러운 앰비언트 (mokup1.png의 러시·밝은 무드).
@@ -126,10 +163,12 @@ func _spawn_logs() -> void:
 			continue
 		var dir := LaneConfig.river_dir(z)
 		var speed := LaneConfig.river_speed(z)
-		var count := 3
+		# 레인 폭(+여유)에 통나무를 균등 분포 → 어느 칸에서도 곧 탈 통나무가 온다.
+		var count := 4
+		var spacing := float(GridUtil.COLS + 4) / float(count)
 		for i in count:
 			var span := 2.4 + float((z + i) % 2) * 0.6
-			var start_x := -1.5 + float(i) * 6.5 + float(z % 3) * 2.0
+			var start_x := -2.0 + float(i) * spacing + float(z % 3) * 1.3
 			var log := Log.new()
 			log.init(z, dir, speed, span, start_x)
 			add_child(log)
@@ -181,9 +220,10 @@ func _spawn_enemy() -> void:
 		cell = Vector2i(fcx, fcz)
 
 	var enemy := Enemy.new()
-	# 일반 몬스터(고블린 스프라이트) 85% / 강한 적(Boogeyman glb) 15% — 보스급 등장 빈도를 낮춤.
-	var hp: int = 1 if randf() < 0.85 else randi_range(2, 3)
+	# 강한 적(Boogeyman glb) 비율은 스테이지 난이도(_strong_chance)에 따른다. 나머지는 일반 몬스터.
+	var hp: int = randi_range(2, 3) if randf() < _strong_chance else 1
 	enemy.init(_grail, cell, hp)
+	enemy.speed_mul = _enemy_speed_mul
 	add_child(enemy)
 	_enemies.append(enemy)
 
@@ -201,7 +241,7 @@ func _process(delta: float) -> void:
 	_update_progress_hud()
 
 	_spawn_timer += delta
-	if _spawn_timer >= SPAWN_INTERVAL and _enemies.size() < MAX_ENEMIES:
+	if _spawn_timer >= _spawn_interval and _enemies.size() < _max_enemies:
 		_spawn_timer = 0.0
 		_spawn_enemy()
 
@@ -225,6 +265,7 @@ func _process(delta: float) -> void:
 		# 적 ↔ 성배: 피해가 실제로 들어갔을 때만 적 소멸 (+ death 파티클).
 		if e.position.distance_to(_grail.position) < 0.6:
 			if _grail.take_damage():
+				AudioManager.sfx("hit")  # 마차 피격
 				_spawn_death_fx(e.global_position)  # queue_free 전에 위치 확보
 				e.queue_free()
 				_enemies.remove_at(i)
@@ -234,21 +275,48 @@ func _process(delta: float) -> void:
 				e.knockback(e.position - _grail.position)
 
 func _spawn_death_fx(pos: Vector3) -> void:
+	# 폭발 플래시: 발광 구가 순간 커지며 사라진다.
+	var flash := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.25
+	sphere.height = 0.5
+	flash.mesh = sphere
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = Color(1.0, 0.82, 0.35)
+	fm.emission_enabled = true
+	fm.emission = Color(1.0, 0.55, 0.15)
+	fm.emission_energy_multiplier = 3.2
+	flash.material_override = fm
+	flash.position = pos + Vector3(0, 0.4, 0)
+	add_child(flash)
+	var tw := create_tween()
+	tw.tween_property(flash, "scale", Vector3.ONE * 2.8, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(fm, "emission_energy_multiplier", 0.0, 0.2)
+	tw.tween_callback(flash.queue_free)
+
+	# 발광 파편 버스트.
 	var fx := CPUParticles3D.new()
 	fx.emitting = true
 	fx.one_shot = true
-	fx.amount = 10
-	fx.lifetime = 0.4
-	fx.position = pos
-	var box := BoxMesh.new()
-	box.size = Vector3(0.12, 0.12, 0.12)
-	fx.mesh = box
-	fx.initial_velocity_min = 2.0
-	fx.initial_velocity_max = 4.0
-	fx.gravity = Vector3(0, -6, 0)
+	fx.amount = 14
+	fx.lifetime = 0.45
+	fx.position = pos + Vector3(0, 0.3, 0)
+	var shard := BoxMesh.new()
+	shard.size = Vector3(0.12, 0.12, 0.12)
+	var smat := StandardMaterial3D.new()
+	smat.albedo_color = Color(1.0, 0.7, 0.25)
+	smat.emission_enabled = true
+	smat.emission = Color(1.0, 0.5, 0.12)
+	smat.emission_energy_multiplier = 1.4
+	shard.surface_set_material(0, smat)
+	fx.mesh = shard
+	fx.spread = 60.0
+	fx.initial_velocity_min = 2.5
+	fx.initial_velocity_max = 4.5
+	fx.gravity = Vector3(0, -7, 0)
 	add_child(fx)
 
-	var timer := get_tree().create_timer(0.8)
+	var timer := get_tree().create_timer(0.9)
 	timer.timeout.connect(func() -> void:
 		if is_instance_valid(fx):
 			fx.queue_free()
@@ -257,6 +325,8 @@ func _spawn_death_fx(pos: Vector3) -> void:
 func _award_coin() -> void:
 	_coins += 1
 	_hud.set_coins(_coins)
+	AudioManager.sfx("coin", 0.08)  # 약간의 피치 변주로 연타가 단조롭지 않게
+	SaveManager.add_coins(1)        # 누적은 라운드 종료 시 commit()으로 디스크 반영
 
 func _update_progress_hud() -> void:
 	# 스코어 = 성배마차가 전진한 행 수. BEST는 세션 최고.
@@ -289,8 +359,39 @@ func _log_at(world_x: float, cz: int) -> Log:
 	return null
 
 func _drown_player(cz: int) -> void:
+	_spawn_splash_fx(_player.global_position)
+	AudioManager.sfx("splash")
 	var safe := _safe_row_below(cz)
 	_player.splash_reset(_player.cx, safe)
+
+func _spawn_splash_fx(pos: Vector3) -> void:
+	# 익사 첨벙: 파란 물방울이 위로 튀었다 떨어진다.
+	var fx := CPUParticles3D.new()
+	fx.emitting = true
+	fx.one_shot = true
+	fx.amount = 16
+	fx.lifetime = 0.5
+	fx.position = pos + Vector3(0, 0.1, 0)
+	var drop := SphereMesh.new()
+	drop.radius = 0.07
+	drop.height = 0.14
+	fx.mesh = drop
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.45, 0.75, 1.0)
+	mat.emission_enabled = true
+	mat.emission = Color(0.3, 0.6, 1.0)
+	mat.emission_energy_multiplier = 0.8
+	fx.mesh.surface_set_material(0, mat)
+	fx.spread = 55.0
+	fx.initial_velocity_min = 2.5
+	fx.initial_velocity_max = 4.5
+	fx.gravity = Vector3(0, -9, 0)
+	add_child(fx)
+	var timer := get_tree().create_timer(0.9)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(fx):
+			fx.queue_free()
+	)
 
 func _safe_row_below(cz: int) -> int:
 	for z in range(cz - 1, -1, -1):
@@ -302,6 +403,10 @@ func _on_win() -> void:
 	if _state != State.PLAYING:
 		return
 	_state = State.WIN
+	AudioManager.stop_bgm()
+	AudioManager.sfx("win")
+	SaveManager.mark_stage_cleared(StageState.current)
+	_finalize_run()
 	_hud.show_result("ARRIVED!", Color(0.3, 0.8, 0.3))
 	_freeze_actors()
 
@@ -309,8 +414,18 @@ func _on_lose() -> void:
 	if _state != State.PLAYING:
 		return
 	_state = State.LOSE
+	AudioManager.stop_bgm()
+	AudioManager.sfx("lose")
+	_finalize_run()
 	_hud.show_result("MISSION FAILED", Color(1, 0.24, 0))
 	_freeze_actors()
+
+func _finalize_run() -> void:
+	# 신기록 갱신 + 라운드 누적 코인을 디스크에 반영.
+	var score := _grail.get_cz()
+	if SaveManager.report_score(score):
+		_best = score
+	SaveManager.commit()
 
 func _freeze_actors() -> void:
 	_grail.set_process(false)
@@ -339,6 +454,7 @@ func _restart() -> void:
 	_state = State.PLAYING
 	_spawn_timer = 0.0
 	_coins = 0
+	AudioManager.play_bgm("gameplay")
 	_hud.hide_result()
 	_hud.set_coins(0)
 	_hud.set_score(0, _best)

@@ -16,6 +16,9 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
 
+SaveManager="*res://scripts/SaveManager.gd"
+StageState="*res://scripts/StageState.gd"
+AudioManager="*res://scripts/AudioManager.gd"
 WindowFit="*res://scripts/WindowFit.gd"
 
 [display]

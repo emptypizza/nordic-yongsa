@@ -5,3 +5,12 @@
 
 # Personal Claude Code settings — never commit
 .claude/settings.local.json
+
+# Scratch / experiment area — 2D asset prototyping, not part of the 3D game.
+# Audio actually used by the game lives under Game/audio/ (tracked).
+/Game/scripts/newexperment/
+
+# Local reference screenshots dropped at repo root (macOS captures)
+/스크린샷*.png
+/Screenshot*.png
+/Screen Shot*.png

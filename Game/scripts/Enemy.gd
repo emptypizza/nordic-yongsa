@@ -2,6 +2,7 @@ class_name Enemy
 extends Node3D
 
 var speed: float = 1.6
+var speed_mul: float = 1.0  # 스테이지 난이도 배수(GameManager가 스폰 시 설정)
 var hp: int = 0
 var stun: float = 0.0
 
@@ -158,7 +159,7 @@ func _process(delta: float) -> void:
 	if not _has_target:
 		return
 
-	position = position.move_toward(_target_pos, speed * delta)
+	position = position.move_toward(_target_pos, speed * speed_mul * delta)
 	if position.distance_to(_target_pos) < 0.01:
 		_pick_next_target()
 

@@ -38,6 +38,26 @@ func _ready() -> void:
 	_check("log-wrap", lg.position.x < 0.0)
 	lg.free()
 
+	# 통나무 커버 판정 + 드리프트 부호
+	var lg2 := Log.new()
+	lg2.init(6, 1, 1.5, 2.6, 5.0)  # x=5 중앙, 길이 2.6(반=1.3, 여유 0.15)
+	_check("log-cover-center", lg2.covers_x(5.0))
+	_check("log-cover-edge", lg2.covers_x(5.0 + 1.3))
+	_check("log-cover-far-no", not lg2.covers_x(5.0 + 2.0))
+	_check("log-drift-pos", lg2.drift_dx(1.0) > 0.0)
+	lg2.dir = -1
+	_check("log-drift-neg", lg2.drift_dx(1.0) < 0.0)
+	lg2.free()
+
+	# 강 레인: 방향 교차 + 속도 양수
+	_check("river-dir-alt", LaneConfig.river_dir(6) == 1 and LaneConfig.river_dir(7) == -1)
+	_check("river-speed-pos", LaneConfig.river_speed(6) >= 1.0 and LaneConfig.river_speed(17) >= 1.0)
+
+	# 익사 셀: 강의 비-다리 칸만(양쪽 강 밴드), 다리 칸은 안전
+	var bc := LaneConfig.bridge_center()
+	_check("drown-river-noncenter", LaneConfig.is_drown_cell(2, 6) and LaneConfig.is_drown_cell(GridUtil.COLS - 1, 17))
+	_check("drown-bridge-safe", not LaneConfig.is_drown_cell(bc, 6) and not LaneConfig.is_drown_cell(bc, 17))
+
 	# 일반 몬스터 스프라이트 시트 4종이 모두 존재하고 Texture2D로 로드되는지
 	var spr_ok := Enemy.GEN_SHEETS.size() == 4
 	for p in Enemy.GEN_SHEETS:

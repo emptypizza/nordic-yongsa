@@ -10,6 +10,10 @@ extends CanvasLayer
 signal hop_requested(dir: Vector2i)
 signal retry_pressed
 signal menu_pressed
+signal hero_selected(index: int)   # 영웅 카드 탭 → 활성 영웅 라이브 교체 요청
+
+var _hero_bar: Control
+var _edit_panel: Panel
 
 var _hp_bar: ProgressBar
 var _score_label: Label
@@ -20,7 +24,8 @@ var _result_label: Label
 var _pause_label: Label
 var _paused := false
 
-const SWIPE_MIN := 80.0  # 이보다 짧은 드래그는 탭(전진)으로 처리
+const SWIPE_MIN := 70.0   # 릴리스 시 이보다 짧은 드래그는 탭(전진)으로 처리
+const DRAG_STEP := 110.0  # 누른 채 끄는 도중 이 거리를 넘으면 즉시 방향 hop + 기준점 재설정(연속 이동)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS  # 일시정지 중에도 HUD 동작
@@ -154,8 +159,9 @@ func _build_hero_cards() -> void:
 	bar.offset_top = -280
 	bar.offset_bottom = -40
 	add_child(bar)
+	_hero_bar = bar
 
-	# 편집 버튼 (좌하단)
+	# 편집 버튼 (좌하단) → 영웅 편성/레벨업 오버레이 토글
 	var edit := Button.new()
 	edit.text = "편집"
 	edit.add_theme_font_size_override("font_size", 32)
@@ -164,9 +170,16 @@ func _build_hero_cards() -> void:
 	edit.add_theme_stylebox_override("pressed", _panel_style(Color(0.16, 0.20, 0.16, 0.9), 18))
 	edit.position = Vector2(36, 150)
 	edit.custom_minimum_size = Vector2(120, 90)
+	edit.pressed.connect(_toggle_edit)
 	bar.add_child(edit)
 
-	# 영웅 카드 3장 (중앙 정렬)
+	_populate_hero_cards()
+
+# 카드만 다시 그린다(편집 버튼은 유지). 활성 영웅이 바뀌면 호출해 하이라이트를 옮긴다.
+func _populate_hero_cards() -> void:
+	for c in _hero_bar.get_children():
+		if c.has_meta("hero_card"):
+			c.queue_free()
 	var heroes := HeroRoster.all()
 	var card_w := 230.0
 	var gap := 24.0
@@ -174,11 +187,16 @@ func _build_hero_cards() -> void:
 	var start_x := (1080.0 - total) * 0.5
 	var active := HeroRoster.active_index()
 	for i in heroes.size():
-		var h = heroes[i]
-		_make_hero_card(bar, h, start_x + float(i) * (card_w + gap), card_w, i == active)
+		_make_hero_card(_hero_bar, heroes[i], i, start_x + float(i) * (card_w + gap), card_w, i == active)
 
-func _make_hero_card(parent: Control, hero, x: float, w: float, selected: bool) -> void:
+func refresh_hero_cards() -> void:
+	if _hero_bar != null:
+		_populate_hero_cards()
+
+func _make_hero_card(parent: Control, hero, index: int, x: float, w: float, selected: bool) -> void:
 	var card := Panel.new()
+	card.set_meta("hero_card", true)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 탭은 위의 투명 버튼이 처리
 	var bg := Color(0.95, 0.93, 0.86, 0.96)
 	var border_col := Color(0.30, 0.78, 0.40) if selected else Color(0.55, 0.50, 0.42)
 	var border_w := 8 if selected else 3
@@ -190,6 +208,7 @@ func _make_hero_card(parent: Control, hero, x: float, w: float, selected: bool) 
 
 	# 상단 영웅색 띠 (포트레이트 자리)
 	var portrait := Panel.new()
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.add_theme_stylebox_override("panel", _panel_style(hero.color, 16))
 	portrait.position = Vector2(16, 16)
 	portrait.custom_minimum_size = Vector2(w - 32, 110)
@@ -197,6 +216,7 @@ func _make_hero_card(parent: Control, hero, x: float, w: float, selected: bool) 
 	card.add_child(portrait)
 
 	var name_lbl := _label(hero.name, 36, Color(0.20, 0.18, 0.14))
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.add_theme_constant_override("outline_size", 0)
 	name_lbl.position = Vector2(0, 132)
@@ -206,6 +226,7 @@ func _make_hero_card(parent: Control, hero, x: float, w: float, selected: bool) 
 
 	# 레벨 배지 (우상단)
 	var lv := Panel.new()
+	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lv.add_theme_stylebox_override("panel", _panel_style(hero.color.darkened(0.1), 18, Color.WHITE, 3))
 	lv.position = Vector2(w - 56, 8)
 	lv.custom_minimum_size = Vector2(48, 48)
@@ -220,9 +241,138 @@ func _make_hero_card(parent: Control, hero, x: float, w: float, selected: bool) 
 
 	if selected:
 		var check := _label("✓", 36, Color(0.20, 0.70, 0.30))
+		check.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		check.position = Vector2(10, 4)
 		check.add_theme_constant_override("outline_size", 0)
 		card.add_child(check)
+
+	# 카드 전체를 덮는 투명 탭 버튼 → 활성 영웅 교체 요청.
+	var tap := Button.new()
+	tap.set_meta("hero_card", true)
+	tap.flat = true
+	tap.focus_mode = Control.FOCUS_NONE
+	tap.position = Vector2(x, 40)
+	tap.custom_minimum_size = Vector2(w, 200)
+	tap.size = Vector2(w, 200)
+	tap.pressed.connect(func() -> void:
+		AudioManager.sfx("button")
+		hero_selected.emit(index))
+	parent.add_child(tap)
+
+# ── 영웅 편성/레벨업 오버레이 (편집) ───────────────────────────
+func _toggle_edit() -> void:
+	AudioManager.sfx("button")
+	if _edit_panel != null and is_instance_valid(_edit_panel):
+		_edit_panel.queue_free()
+		_edit_panel = null
+		return
+	_build_edit_panel()
+
+func _hero_levelup_cost(level: int) -> int:
+	return level * 12  # 레벨이 오를수록 비싸진다(누적 코인 소비처).
+
+func _build_edit_panel() -> void:
+	var panel := Panel.new()
+	panel.add_theme_stylebox_override("panel", _panel_style(Color(0.12, 0.14, 0.12, 0.97), 28, Color(1, 1, 1, 0.5), 4))
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	panel.offset_left = -440
+	panel.offset_right = 440
+	panel.offset_top = -520
+	panel.offset_bottom = 320
+	add_child(panel)
+	_edit_panel = panel
+
+	var title := _label("영웅 편성", 56, Color(1, 0.92, 0.6))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 30
+	title.offset_bottom = 110
+	panel.add_child(title)
+
+	var coin_lbl := _label("🪙 보유 코인 %d" % SaveManager.get_total_coins(), 38, Color(1, 0.86, 0.3))
+	coin_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	coin_lbl.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	coin_lbl.offset_top = 120
+	coin_lbl.offset_bottom = 175
+	panel.add_child(coin_lbl)
+
+	var heroes := HeroRoster.all()
+	var active := HeroRoster.active_index()
+	var row_y := 200.0
+	for i in heroes.size():
+		_build_edit_row(panel, heroes[i], i, i == active, row_y)
+		row_y += 175.0
+
+	var close := Button.new()
+	close.text = "닫기"
+	close.add_theme_font_size_override("font_size", 38)
+	close.add_theme_stylebox_override("normal", _panel_style(Color(0.30, 0.55, 0.95), 18))
+	close.add_theme_stylebox_override("hover", _panel_style(Color(0.36, 0.62, 1.0), 18))
+	close.add_theme_stylebox_override("pressed", _panel_style(Color(0.24, 0.46, 0.85), 18))
+	close.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	close.offset_left = 290
+	close.offset_right = 590
+	close.offset_top = -110
+	close.offset_bottom = -30
+	close.pressed.connect(_toggle_edit)
+	panel.add_child(close)
+
+func _build_edit_row(panel: Panel, hero, index: int, selected: bool, y: float) -> void:
+	var swatch := Panel.new()
+	swatch.add_theme_stylebox_override("panel", _panel_style(hero.color, 14))
+	swatch.position = Vector2(40, y)
+	swatch.custom_minimum_size = Vector2(90, 90)
+	swatch.size = Vector2(90, 90)
+	panel.add_child(swatch)
+
+	var name_lbl := _label("%s   Lv %d" % [hero.name, hero.level], 40, Color(0.96, 0.96, 0.9))
+	name_lbl.position = Vector2(150, y + 16)
+	name_lbl.custom_minimum_size = Vector2(360, 56)
+	panel.add_child(name_lbl)
+
+	# 선택 버튼
+	var sel := Button.new()
+	sel.text = "사용중" if selected else "선택"
+	sel.disabled = selected
+	sel.add_theme_font_size_override("font_size", 32)
+	sel.add_theme_stylebox_override("normal", _panel_style(Color(0.30, 0.70, 0.35) if not selected else Color(0.30, 0.40, 0.30), 16))
+	sel.add_theme_stylebox_override("hover", _panel_style(Color(0.36, 0.78, 0.40), 16))
+	sel.add_theme_stylebox_override("pressed", _panel_style(Color(0.24, 0.60, 0.30), 16))
+	sel.add_theme_stylebox_override("disabled", _panel_style(Color(0.26, 0.34, 0.26), 16))
+	sel.position = Vector2(520, y)
+	sel.custom_minimum_size = Vector2(150, 88)
+	sel.pressed.connect(func() -> void:
+		AudioManager.sfx("button")
+		hero_selected.emit(index))
+	panel.add_child(sel)
+
+	# 레벨업 버튼 (누적 코인 소비)
+	var cost := _hero_levelup_cost(hero.level)
+	var up := Button.new()
+	up.text = "레벨업\n🪙%d" % cost
+	up.add_theme_font_size_override("font_size", 28)
+	up.add_theme_stylebox_override("normal", _panel_style(Color(0.85, 0.62, 0.20), 16))
+	up.add_theme_stylebox_override("hover", _panel_style(Color(0.92, 0.70, 0.26), 16))
+	up.add_theme_stylebox_override("pressed", _panel_style(Color(0.70, 0.50, 0.16), 16))
+	up.position = Vector2(690, y)
+	up.custom_minimum_size = Vector2(160, 88)
+	up.pressed.connect(func() -> void: _try_levelup(hero.id, cost))
+	panel.add_child(up)
+
+func _try_levelup(hero_id: String, cost: int) -> void:
+	if SaveManager.get_total_coins() < cost:
+		AudioManager.sfx("lose")  # 코인 부족
+		return
+	SaveManager.add_coins(-cost)
+	SaveManager.commit()
+	SaveManager.set_hero_level(hero_id, SaveManager.get_hero_level(hero_id) + 1)
+	AudioManager.sfx("power_up")
+	# 편집 패널 + 하단 카드 동시 갱신.
+	if _edit_panel != null and is_instance_valid(_edit_panel):
+		_edit_panel.queue_free()
+		_edit_panel = null
+		_build_edit_panel()
+	refresh_hero_cards()
 
 # ── 일시정지 ───────────────────────────────────────────────────
 func _build_pause_overlay() -> void:
@@ -240,6 +390,7 @@ func _toggle_pause() -> void:
 	_paused = not _paused
 	get_tree().paused = _paused
 	_pause_label.visible = _paused
+	AudioManager.sfx("button")
 
 # ── 결과 패널 ──────────────────────────────────────────────────
 func _build_result_panel() -> void:
@@ -269,6 +420,7 @@ func _build_result_panel() -> void:
 	retry.position = Vector2(70, 250)
 	retry.custom_minimum_size = Vector2(250, 90)
 	retry.pressed.connect(func() -> void:
+		AudioManager.sfx("button")
 		if _paused:
 			_toggle_pause()
 		retry_pressed.emit())
@@ -282,11 +434,14 @@ func _build_result_panel() -> void:
 	menu.add_theme_stylebox_override("pressed", _panel_style(Color(0.24, 0.46, 0.85), 18))
 	menu.position = Vector2(400, 250)
 	menu.custom_minimum_size = Vector2(250, 90)
-	menu.pressed.connect(func() -> void: menu_pressed.emit())
+	menu.pressed.connect(func() -> void:
+		AudioManager.sfx("button")
+		menu_pressed.emit())
 	_result_panel.add_child(menu)
 
 # ── 입력 (스와이프/탭) ─────────────────────────────────────────
 var _swipe_active := false
+var _swipe_moved := false
 var _swipe_start := Vector2.ZERO
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -295,15 +450,29 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_swipe_active = true
+			_swipe_moved = false
 			_swipe_start = event.position
 		elif _swipe_active:
 			_swipe_active = false
-			_resolve_gesture(event.position - _swipe_start)
+			if not _swipe_moved:
+				_resolve_gesture(event.position - _swipe_start)  # 탭 또는 짧은 스와이프(릴리스)
+	elif event is InputEventScreenDrag and _swipe_active:
+		# 누른 채 충분히 끌면 즉시 방향 hop을 내고 기준점을 옮긴다 → 끌고 있는 동안 연속 이동.
+		# (Player.try_hop이 hop 쿨다운으로 과다 입력을 막아준다.)
+		var drag := event as InputEventScreenDrag
+		var d := drag.position - _swipe_start
+		if d.length() >= DRAG_STEP:
+			_emit_dir(d)
+			_swipe_start = drag.position
+			_swipe_moved = true
 
 func _resolve_gesture(delta: Vector2) -> void:
 	if delta.length() < SWIPE_MIN:
 		hop_requested.emit(Vector2i(0, 1))  # 탭 = 전진
 		return
+	_emit_dir(delta)
+
+func _emit_dir(delta: Vector2) -> void:
 	# 카메라가 +z를 바라보므로 화면 좌우와 월드 x축이 반대다.
 	if absf(delta.x) > absf(delta.y):
 		hop_requested.emit(Vector2i(-1, 0) if delta.x > 0.0 else Vector2i(1, 0))

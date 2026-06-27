@@ -82,23 +82,31 @@ Game/
   Title.tscn             # 루트 CanvasLayer + TitleScreen 코드-빌드 UI
   StageSelect.tscn       # 루트 CanvasLayer + StageSelect 코드-빌드 UI
   Main.tscn              # 루트 Node3D + 카메라/조명/보드/UI 조립
+  audio/                 # (신규) 게임 사운드 WAV (BGM 2 + SFX 14). AudioManager가 res://audio/로 참조
   scripts/
-    TitleScreen.gd       # START → StageSelect.tscn
-    StageSelect.gd       # STAGE 1 → Main.tscn
-    GameManager.gd       # 상태(Playing/Win/Lose), 적 스폰, 통나무 스폰, 물 판정, HP/스코어/코인, 재시작
+    SaveManager.gd       # (신규) autoload: user://save.json 영속화(BEST·누적코인·영웅레벨·활성영웅·해금스테이지·사운드설정)
+    StageState.gd        # (신규) autoload: 선택 스테이지 + 난이도(스폰간격/동시적수/강적비율/적속도). 보드는 동일, 적 압박만 변동
+    AudioManager.gd      # (신규) autoload: BGM 1채널(루프) + SFX 폴리포니 풀. 논리 이벤트명→파일. 헤드리스에서 안전(no-op)
+    MenuUI.gd            # (신규) Title/StageSelect 공용 스타일 헬퍼(라운드 패널/아웃라인 텍스트/그라데이션 배경)
+    TitleScreen.gd       # 타이틀(게임명 + START → StageSelect + 사운드 토글). 로비 BGM, MenuUI 톤
+    StageSelect.gd       # 스테이지 카드 N장(SaveManager 해금 상태로 잠금/해제) → StageState.select() 후 Main.tscn
+    GameManager.gd       # 상태(Playing/Win/Lose), 스테이지 난이도 적용, 적/통나무 스폰, 물 판정, HP/스코어/코인, 영웅 라이브 교체, 사운드·세이브 훅, 재시작
     GridUtil.gd          # 그리드↔월드 변환, 경계
     LaneConfig.gd        # (신규) 레인 타입(잔디/강/길) 결정론 배치, 다리/익사/통나무 파라미터
-    Board.gd             # (신규) 레인 타일(절차적 톱다운 텍스처, 없으면 색 폴백) + 다리 + 숲 + 빛나는 포탈을 코드-빌드
-    Log.gd               # (신규) 강 통나무 드리프트 플랫폼(래핑), 탑승 판정
-    HeroRoster.gd        # (신규) 영웅 데이터(라비→Warrior / 소희→Healer / 아론→Wizard: 이름·테마색·레벨·glb)
+    Board.gd             # (신규) 레인 타일(머티리얼별 MultiMesh 배칭) + 다리 + 숲(덤불/바위 MultiMesh) + 빛나는 포탈을 코드-빌드
+    Log.gd               # (신규) 강 통나무 드리프트 플랫폼(래핑), 탑승 판정, 물 위 bob 시각 피드백
+    HeroRoster.gd        # (신규) 영웅 데이터(라비→Warrior / 소희→Healer / 아론→Wizard). 활성영웅·레벨은 SaveManager 영속, 라이브 교체 가능
     CharacterMesh.gd     # (신규) glbs/ 복셀 캐릭터를 타일 기준으로 정규화(고정 스케일+Idle 루프), pivot 래핑 로더
     Grail.gd             # 연속 전진, HP, 무적, Win/Death 신호 — 비주얼은 성배마차(몸체+캐노피+바퀴+발광 성배) + 호위 동행 3명
-    Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌, 통나무 탑승(ride)/익사 복귀(splash_reset). 메시=활성 영웅 glb(pivot)
-    Enemy.gd             # 연속 직각 그리드 추적, 충돌 판정(1칸 넉백). 메시=일반몹→스프라이트 4종 랜덤(고블린/슬라임/스켈레톤/박쥐) / 강한적→Boogeyman glb, 폴백=프리미티브
-    Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인/일시정지) + 하단 영웅카드 + 스와이프 입력
+    Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌, 통나무 탑승(ride)/익사 복귀(splash_reset). 메시=활성 영웅 glb(pivot), rebuild_visual()로 라이브 교체
+    Enemy.gd             # 연속 직각 그리드 추적(스테이지 속도배수), 충돌 판정(1칸 넉백). 메시=일반몹→스프라이트 4종 랜덤 / 강한적→Boogeyman glb, 폴백=프리미티브
+    Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인/일시정지) + 하단 영웅카드(탭=라이브 교체) + 편집(코인으로 레벨업) + 스와이프/드래그 입력
     WindowFit.gd         # autoload: 데스크톱 창을 9:16으로 리사이즈(모바일/헤드리스 비활성)
-    LogicTests.gd        # GridUtil + LaneConfig + Log 헤드리스 셀프테스트, Tests.tscn으로 실행(18/18 PASS)
+    LogicTests.gd        # GridUtil + LaneConfig + Log/강 헤드리스 셀프테스트, Tests.tscn으로 실행(26/26 PASS)
 ```
+
+- **autoload 4종**(project.godot 순서): `SaveManager` → `StageState` → `AudioManager` → `WindowFit`. SaveManager를 먼저 둬 AudioManager가 사운드 설정을 읽을 수 있게 한다.
+- **스크래치 폴더 주의**: `Game/scripts/newexperment/`는 2D 에셋 실험용으로 `.gitignore` 처리(게임이 쓰는 오디오는 `Game/audio/`로 편입). 루트 스크린샷도 ignore.
 
 - 화면 흐름: `Title` → `Stage Select`(스테이지 1개) → `Play` → 결과(`ARRIVED!`/`MISSION FAILED`) 패널에서 `RETRY`(같은 판 재시작) 또는 `STAGE SELECT`(선택 화면 복귀). 시작 씬은 `res://Title.tscn`이며, 화면 스크립트는 씬에 UI 자식을 저장하지 않고 `_Ready()`에서 코드로 빌드한다. 메뉴 화면(`Title`/`StageSelect`)은 `Hud`와 동일하게 `CanvasLayer` 루트 아래 중앙 정렬 `Control` 자식을 둔다.
 - 적 스폰: 성배(마차)에서 최소 10칸(링 10~16칸) 떨어진 주위 그리드 레인에 스냅해 생성. 동시 적 수는 `GameManager`가 제한하고, 기본 스폰 간격은 2.5초로 둔다.
@@ -134,20 +142,31 @@ Game/
 - `_Process`/`_PhysicsProcess`에서 매 프레임 갱신: 성배 연속 전진, 적 연속 이동, 충돌 판정, 카메라 추적.
 - 입력 대기 없이 실시간 진행.
 
-## 8. 프로토타입 범위 밖 (out of scope)
+## 8. 구현 완료 / 범위 밖
 
-- 다중 스테이지, 세이브/로드, 사운드, 타이틀/메뉴 연출 고도화
+**2026-06-27 메타·연출 패스로 완료된 항목** (기존 "범위 밖"에서 이동):
+- **사운드** — `AudioManager` autoload + `Game/audio/`(BGM 2 + SFX 14). 전진/처치/피격/익사/클리어/실패/버튼에 훅. 타이틀·스테이지=로비 BGM, 인게임=게임플레이 BGM.
+- **세이브/로드** — `SaveManager` autoload(`user://save.json`): BEST·누적코인·영웅레벨·활성영웅·해금스테이지·사운드설정.
+- **영웅 카드 스왑/편집** — 카드 탭=활성 영웅 라이브 교체(Player 메시+동행 재구성). 편집=누적 코인으로 영웅 레벨업.
+- **다중 스테이지** — `StageState`(3스테이지, 난이도=스폰압박). StageSelect에서 클리어 시 다음 스테이지 해금.
+- **성능** — Board 바닥 타일 570개를 머티리얼별 MultiMesh로 배칭(드로우콜 ~7), 덤불/바위도 MultiMesh.
+- **타이틀/메뉴 연출** — `MenuUI` 공용 스타일(그라데이션 배경·라운드 패널·아웃라인). 게임명 "길건너 용사들", 사운드 토글.
+- **익사/통나무 손맛** — 첨벙 물 파티클 + 사운드, 통나무 bob, 레인당 통나무 4개 균등 분포.
+- **death FX** — 발광 폭발 플래시 + 발광 파편 버스트(외부 에셋 무의존, voxel 톤 유지).
+- **Android export** — 헤드리스 `--export-debug "Android"` → `Game/build/nordic.apk` 정상 생성(exit 0). 경고: 프로젝트 아이콘 미설정(비치명적).
+
+**여전히 범위 밖 / 남은 과제:**
 - 에셋 주의: `Game/scripts/glbs/`의 `*_N.png`(개당 ~100~200B, 약 2232개)는 **glTF가 추출한 머티리얼 팔레트 텍스처**로,
   임포트된 GLB 메시의 `StandardMaterial3D.albedo_texture`가 `res://scripts/glbs/<name>_N.png`로 **실제 참조**한다(복셀 파츠별 색).
   → **삭제 금지**(지우면 머티리얼 색이 깨짐). LFS는 `.glb` 원본만, 작은 PNG는 일반 추적.
-- 실제 voxel/lowpoly 에셋 임포트: **완료** — 영웅(Warrior=플레이어, 노란머리)·동행(Healer/Wizard/Crow)·강한 적(Boogeyman)에 `glbs/` 메시 적용,
-  일반 몬스터는 고블린 스프라이트, 바닥은 절차적 타일 텍스처. 성배마차/숲/포탈/통나무는 프리미티브 유지. (남은 과제: 성능 — glb당 메시 인스턴스가 많아
-  draw call이 큼. 동시 표시가 많으면 메시 병합/LOD 최적화 필요. 동료 표시는 `GameManager._spawn_companions`로 토글 가능.)
-- 모바일 빌드 최적화(키보드 우선 검증, 가상 d-pad/스와이프는 함께 넣되 데스크톱에서 1차 검증)
+- 성배마차/숲(나무)/포탈/통나무는 아직 프리미티브 placeholder — 실제 lowpoly/스프라이트 에셋 교체는 후속(에셋 생성 파이프라인 필요).
+- glb 캐릭터 LOD/메시 병합(동시 표시가 많을 때). 동료 표시는 `GameManager._spawn_companions`로 토글 가능.
+- 프로젝트 아이콘, 사운드 볼륨 슬라이더 UI, 영웅 능력차(현재 레벨은 숫자만, 스탯 미연동).
 
 ## 9. 검증 환경 (참고)
 
 - 엔진 **Godot 4.7** (`4.7.stable.mono`). GDScript 프로젝트라 **.NET / DOTNET_ROOT 불필요**(mono 빌드라도 C# 없이 구동).
-- 헤드리스 셀프테스트 `Tests.tscn` **18/18 PASS** 확인됨(GridUtil + LaneConfig + Log 래핑, `godot --headless --path Game res://Tests.tscn`).
-- 메인 게임 헤드리스 구동 정상 확인됨(`godot --headless --path Game res://Main.tscn --quit-after 600`, exit 0, 스크립트/파스 에러 0 — 적 스폰·전투·통나무 드리프트·마차 전진 포함).
-- 비주얼/손맛(레인·강·포탈·마차·HUD)은 에디터 F5로 확인.
+- 헤드리스 셀프테스트 `Tests.tscn` **26/26 PASS** 확인됨(GridUtil + LaneConfig + Log/강 + 적 스프라이트, `godot --headless --path Game res://Tests.tscn`).
+- 메인 게임 헤드리스 구동 정상 확인됨(`godot --headless --path Game res://Main.tscn --quit-after 400`, exit 0, 스크립트/파스 에러 0). Title/StageSelect도 에러 0.
+- 신규 class_name(`MenuUI`) 추가 시 글로벌 클래스 캐시가 비면 파스 에러가 날 수 있으니 `godot --headless --path Game --import`로 캐시를 갱신한다.
+- 비주얼/손맛(레인·강·포탈·마차·HUD·사운드)은 에디터 F5로 확인.
