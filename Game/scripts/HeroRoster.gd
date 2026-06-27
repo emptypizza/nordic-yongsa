@@ -26,7 +26,7 @@ class Hero:
 # portrait: 기존 GLB 렌더 PNG가 있으면 카드에 띄운다(라비=Test Ch 렌더). 없으면 역할 아이콘으로 폴백.
 const DEFS := [
 	{"id": "ravi", "name": "라비", "color": Color(0.45, 0.62, 0.95), "glb": "res://scripts/glbs/Warrior 01.glb",
-		"portrait": "res://scripts/Test Ch_0.png", "badge": Color(0.30, 0.45, 0.85), "icon": "sword"},
+		"portrait": "", "badge": Color(0.30, 0.45, 0.85), "icon": "sword"},
 	{"id": "sohee", "name": "소희", "color": Color(0.95, 0.55, 0.72), "glb": "res://scripts/glbs/Healer 01.glb",
 		"portrait": "", "badge": Color(0.85, 0.35, 0.55), "icon": "heart"},
 	{"id": "aron", "name": "아론", "color": Color(0.85, 0.45, 0.28), "glb": "res://scripts/glbs/Wizard 01.glb",
