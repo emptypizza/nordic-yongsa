@@ -46,16 +46,16 @@ func _ready() -> void:
 		get_tree().change_scene_to_file("res://StageSelect.tscn"))
 
 	# 사운드 토글(우상단).
-	_sound_btn = MenuUI.button(self, _sound_glyph(), 52, MenuUI.BLUE)
+	_sound_btn = MenuUI.button(self, _sound_glyph(), 34, MenuUI.BLUE)
 	_sound_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_sound_btn.offset_left = -150
+	_sound_btn.offset_left = -330
 	_sound_btn.offset_right = -40
 	_sound_btn.offset_top = 50
-	_sound_btn.offset_bottom = 160
+	_sound_btn.offset_bottom = 150
 	_sound_btn.pressed.connect(_toggle_sound)
 
 func _sound_glyph() -> String:
-	return "🔇" if AudioManager.is_muted() else "🔊"
+	return "BGM OFF" if AudioManager.is_muted() else "BGM ON"
 
 func _toggle_sound() -> void:
 	AudioManager.toggle_muted()

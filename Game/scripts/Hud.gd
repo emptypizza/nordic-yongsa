@@ -131,7 +131,7 @@ func _build_top_bar() -> void:
 	lv_badge.custom_minimum_size = Vector2(96, 96)
 	lv_badge.size = Vector2(96, 96)
 	left.add_child(lv_badge)
-	var lv := _label("★\n80", 30, Color.WHITE)
+	var lv := _label("Lv\n80", 30, Color.WHITE)
 	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

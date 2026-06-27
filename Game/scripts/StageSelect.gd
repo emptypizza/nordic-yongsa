@@ -11,7 +11,7 @@ func _ready() -> void:
 	MenuUI.heading(self, "스테이지 선택", 130)
 
 	# 상단 진행 요약(최고 기록 / 누적 코인).
-	var summary := MenuUI.label("⚔ BEST %d      🪙 %d" % [SaveManager.get_best(), SaveManager.get_total_coins()], 40, Color(1, 0.92, 0.6))
+	var summary := MenuUI.label("BEST %d        코인 %d" % [SaveManager.get_best(), SaveManager.get_total_coins()], 40, Color(1, 0.92, 0.6))
 	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	summary.offset_top = 250
@@ -39,7 +39,7 @@ func _make_stage_card(index: int, unlocked: bool, y: float) -> void:
 	btn.disabled = not unlocked
 	var label := "%d.  %s" % [index + 1, StageState.stage_name(index)]
 	if not unlocked:
-		label = "🔒  " + StageState.stage_name(index)
+		label = "[ 잠김 ]  " + StageState.stage_name(index)
 	btn.text = label
 	btn.add_theme_font_size_override("font_size", 56)
 	btn.add_theme_color_override("font_color", Color(0.98, 0.98, 0.92))

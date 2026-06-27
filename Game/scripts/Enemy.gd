@@ -86,10 +86,10 @@ func _build_sprite(is_strong: bool) -> bool:
 	_sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_sprite.shaded = false
 	_sprite.transparent = true
-	# 한 프레임이 대략 1타일 높이가 되도록(시트 생성 후 미세 조정 가능).
+	# 한 프레임이 대략 1.2타일 높이가 되도록(일반 몹도 또렷이 읽히게 키움).
 	var frame_px: float = float(tex.get_height()) / float(GEN_ROWS)
-	_sprite.pixel_size = (1.3 if is_strong else 1.0) / maxf(frame_px, 1.0)
-	_sprite.position = Vector3(0, 0.55, 0)
+	_sprite.pixel_size = (1.5 if is_strong else 1.2) / maxf(frame_px, 1.0)
+	_sprite.position = Vector3(0, 0.62, 0)
 	add_child(_sprite)
 	_visual = _sprite
 	return true
