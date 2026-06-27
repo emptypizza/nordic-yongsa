@@ -98,7 +98,7 @@ Game/
     HeroRoster.gd        # (신규) 영웅 데이터(라비→Warrior / 소희→Healer / 아론→Wizard) + portrait_path·badge_color·role_icon. 활성영웅·레벨은 SaveManager 영속, 라이브 교체 가능
     CharacterMesh.gd     # (신규) glbs/ 복셀 캐릭터를 타일 기준으로 정규화(고정 스케일+Idle 루프), pivot 래핑 로더
     Grail.gd             # 연속 전진, HP, 무적, Win/Death 신호 — 비주얼은 성배마차(몸체+캐노피+바퀴+발광 성배) + 호위 동행 3명
-    Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌, 통나무 탑승(ride)/익사 복귀(splash_reset). 메시=활성 영웅 glb(pivot), rebuild_visual()로 라이브 교체
+    Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌, 통나무 탑승(ride)/익사 복귀(splash_reset). 메시=흰머리 기사 4방향 빌보드 스프라이트(gen/hero/, 방향별 텍스처 스왑), 없으면 영웅 glb(pivot) 폴백. rebuild_visual()로 라이브 교체
     Enemy.gd             # 연속 직각 그리드 추적(스테이지 속도배수), 충돌 판정(1칸 넉백). 메시=일반몹→스프라이트 4종 랜덤 / 강한적→Boogeyman glb, 폴백=프리미티브
     Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인) + 하단 영웅카드(포트레이트·역할아이콘, 탭=라이브 교체) + 편집(코인 레벨업) + 스와이프/드래그. OS 이모지→노드 아이콘(Polygon2D 검/하트/지팡이, 드로운 금화)
     WindowFit.gd         # autoload: 데스크톱 창을 9:16으로 리사이즈(모바일/헤드리스 비활성)
@@ -136,10 +136,15 @@ Game/
   - 포탈(골): 석재 단상+계단 + 블록 4단 기둥 + 상인방 + 발광 코어/회전 링 + 상승 푸른 입자 + 양옆 바위 장식.
     **호위 동행 3명**(비선택 영웅 Healer/Wizard glb + Crow glb)이 마차 좌·우·뒤에 붙어 함께 전진(코스메틱, Idle 애니).
   - 통나무: x축으로 눕힌 갈색 원기둥(+밝은 결 스트라이프), 강 레인을 따라 드리프트.
-  - 용사: **활성 영웅 glb**(라비=Warrior 01.glb) — `CharacterMesh`로 타일 기준 정규화, Idle 루프 +
-    깡총 hop 아크+착지 스쿼시(pivot scale), 이동 방향 회전, 익사 시 첨벙 스쿼시.
-    **주인공은 노란머리**: 머리카락 파츠(이름 `ha*`/`hha*`, 68개)만 `CharacterMesh.recolor_parts`로
-    노란 단색 `material_override`(머리·얼굴 `h$$` 등은 제외). Player에서만 적용(동행/적 무관).
+  - 용사: **흰머리 기사 4방향 빌보드 스프라이트**(레퍼런스 아트의 파란 망토·검 치비 기사) —
+    `gen/hero/knight_{front,back,left,right}.png`를 `CharacterMesh.build_billboard(front, 1.6)`로
+    카메라-페이싱 `Sprite3D` 생성. 이동 방향에 따라 텍스처 교체(위=back, 아래=front, 좌=left, 우=right);
+    빌보드라 회전 대신 텍스처 스왑. 깡총 hop 아크+착지 스쿼시·익사 첨벙은 pivot에 그대로(접지 일정).
+    **2026-06-27 hero 빌보드 패스**: `Game/build/` 레퍼런스 영상(KakaoTalk mp4)에서 정면/뒷면/좌측 프레임
+    추출(ffmpeg) → higgsfield `remove_background`(투명 PNG) → 콘텐츠 트림 후 **공통 높이 440px 정규화**
+    (네 텍스처가 같은 픽셀 높이라 스왑해도 월드 스케일·접지 일정), 우측=좌측 좌우반전.
+    스프라이트가 없으면 **활성 영웅 glb**(라비=Warrior 01.glb, `CharacterMesh` 정규화 + 머리카락 흰색
+    `recolor_parts`)로 폴백 — 헤드리스/누락 안전. 동행/적은 무관.
   - 적: **일반 몬스터(잡몹)는 스프라이트 4종 중 랜덤**(sprite-forge `gen/{goblin,slime,skeleton,bat}/`,
     빌보드 2x2 idle) — 잡몹마다 종류가 달라 변화를 준다. **강한 적은 `Boogeyman 01.glb`**(크고 느림, 3D 메시,
     이동 방향 회전 + 기절 흔들림). 둘 다 없으면 프리미티브 박스 폴백.
@@ -161,6 +166,8 @@ Game/
 - **익사/통나무 손맛** — 첨벙 물 파티클 + 사운드, 통나무 bob, 레인당 통나무 4개 균등 분포.
 - **death FX** — 발광 폭발 플래시 + 발광 파편 버스트(외부 에셋 무의존, voxel 톤 유지).
 - **Android export** — 헤드리스 `--export-debug "Android"` → `Game/build/nordic.apk` 정상 생성(exit 0). 경고: 프로젝트 아이콘 미설정(비치명적).
+- **주인공 기사 빌보드(2026-06-27)** — `Game/build/` 레퍼런스 영상에서 흰머리 기사를 추출·배경제거·정규화해
+  `gen/hero/knight_{front,back,left,right}.png` 4방향 빌보드로 Player에 적용(이동 방향 텍스처 스왑). `LogicTests`에 `knight-sprites-load` 추가.
 
 **여전히 범위 밖 / 남은 과제:**
 - 에셋 주의: `Game/scripts/glbs/`의 `*_N.png`(개당 ~100~200B, 약 2232개)는 **glTF가 추출한 머티리얼 팔레트 텍스처**로,

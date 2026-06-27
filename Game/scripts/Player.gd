@@ -6,8 +6,10 @@ var cz: int = 0
 
 var _hopping := false
 var _move_token := 0
-var _model: Node3D       # pivot 노드 (hop/squash/회전 대상). 안쪽에 fit된 영웅 glb.
+var _model: Node3D       # pivot 노드 (hop/squash/회전 대상). 안쪽에 빌보드 스프라이트 또는 영웅 glb.
 var _anim: AnimationPlayer
+var _sprite: Sprite3D    # 4방향 빌보드 주인공(있으면 glb 대신 사용)
+var _dir_tex := {}       # "front"/"back"/"left"/"right" -> Texture2D
 
 # Godot forward(local -Z)를 이동 방향으로 돌리기 위한 보정각(+180°).
 const MODEL_YAW_OFFSET: float = PI
@@ -16,13 +18,38 @@ const FALLBACK_GLB := "res://scripts/Test Ch.glb"
 # 주인공은 흰머리(mokup 레퍼런스의 흰머리 검사). Warrior glb의 머리카락 파츠(이름 ha*/hha*)만 흰색으로.
 const HAIR_COLOR := Color(0.93, 0.94, 0.97)
 const HAIR_PREFIXES := ["hha", "ha"]
+# 주인공 = 흰머리 기사(파란 망토·검, 레퍼런스 아트). 4방향 빌보드 스프라이트로 렌더한다.
+# Game/build/ 레퍼런스 영상에서 정면/뒷면/좌측 프레임 추출 → 배경 제거 → 공통 높이(440px) 정규화,
+# 우측은 좌측 좌우반전. 네 텍스처가 모두 같은 픽셀 높이라 교체해도 월드 스케일·접지가 일정하다.
+const KNIGHT_HEIGHT := 1.6
+const KNIGHT_TEX := {
+	"front": "res://scripts/gen/hero/knight_front.png",
+	"back": "res://scripts/gen/hero/knight_back.png",
+	"left": "res://scripts/gen/hero/knight_left.png",
+	"right": "res://scripts/gen/hero/knight_right.png",
+}
 
 func _ready() -> void:
 	_build_visual()
 	position = GridUtil.cell_to_world(cx, cz, 0.0)
 
 func _build_visual() -> void:
-	# 활성 영웅(HeroRoster) glb를 CharacterMesh로 자동 fit. 없으면 Test Ch로 폴백.
+	# 1순위: 흰머리 기사 4방향 빌보드 스프라이트(레퍼런스 아트). 실패 시 영웅 glb로 폴백.
+	var spr := CharacterMesh.build_billboard(KNIGHT_TEX["front"], KNIGHT_HEIGHT)
+	if spr != null:
+		_dir_tex.clear()
+		for d in KNIGHT_TEX.keys():
+			if ResourceLoader.exists(KNIGHT_TEX[d]):
+				_dir_tex[d] = load(KNIGHT_TEX[d])
+		_sprite = spr
+		var pivot := Node3D.new()
+		pivot.add_child(spr)
+		_model = pivot
+		add_child(_model)
+		_anim = null
+		return
+	# 폴백: 활성 영웅(HeroRoster) glb를 CharacterMesh로 자동 fit. 없으면 Test Ch로 폴백.
+	_sprite = null
 	var hero = HeroRoster.active_hero()
 	var built := CharacterMesh.build(hero.glb, HERO_HEIGHT)
 	if built.is_empty():
@@ -34,7 +61,7 @@ func _build_visual() -> void:
 	_model = built["pivot"]
 	add_child(_model)
 	_anim = built.get("anim")
-	# 주인공 노란머리: 머리카락 파츠만 골라 노란색으로.
+	# 머리카락 파츠만 골라 흰색으로(glb 폴백 시).
 	var model = built.get("model")
 	if model != null:
 		CharacterMesh.recolor_parts(model, HAIR_PREFIXES, HAIR_COLOR)
@@ -45,6 +72,7 @@ func rebuild_visual() -> void:
 		_model.queue_free()
 	_model = null
 	_anim = null
+	_sprite = null
 	_build_visual()
 
 func _process(_delta: float) -> void:
@@ -95,6 +123,20 @@ func _hop_arc() -> void:
 	squash.tween_property(_model, "scale", base, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _face_direction(dx: int, dz: int) -> void:
+	if _sprite != null:
+		# 빌보드는 항상 카메라를 향하므로, 회전 대신 이동 방향에 맞는 텍스처로 교체한다.
+		var key := ""
+		if dz > 0:
+			key = "back"    # 위로(카메라 반대) = 뒷모습
+		elif dz < 0:
+			key = "front"   # 아래로(카메라 쪽) = 정면
+		elif dx > 0:
+			key = "left"    # move_left → 좌측 3/4
+		elif dx < 0:
+			key = "right"   # move_right → 우측(좌측 반전)
+		if key != "" and _dir_tex.has(key):
+			_sprite.texture = _dir_tex[key]
+		return
 	var yaw := atan2(dx, dz) + MODEL_YAW_OFFSET
 	_model.rotation = Vector3(0, yaw, 0)
 

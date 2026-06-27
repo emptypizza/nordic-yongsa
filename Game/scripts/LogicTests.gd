@@ -66,6 +66,14 @@ func _ready() -> void:
 			spr_ok = false
 	_check("enemy-sprites-load", spr_ok)
 
+	# 주인공 4방향 빌보드 스프라이트(front/back/left/right)가 모두 존재·로드되는지
+	var knight_ok := Player.KNIGHT_TEX.size() == 4
+	for d in Player.KNIGHT_TEX.keys():
+		var ktex: Texture2D = load(Player.KNIGHT_TEX[d]) if ResourceLoader.exists(Player.KNIGHT_TEX[d]) else null
+		if ktex == null:
+			knight_ok = false
+	_check("knight-sprites-load", knight_ok)
+
 	# 영웅 로스터 데이터: 3명, 포트레이트는 빈값이거나 실제 존재, 역할 아이콘은 정의된 셋 중 하나
 	var roster_ok := HeroRoster.all().size() == 3
 	for h in HeroRoster.all():
