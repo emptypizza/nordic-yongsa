@@ -14,6 +14,7 @@ var _mat_cache: Dictionary = {}
 var _tex_cache: Dictionary = {}
 var _portal_core: MeshInstance3D
 var _portal_ring: MeshInstance3D
+var _portal_sprite: Sprite3D
 
 func _ready() -> void:
 	_build_tiles()
@@ -348,6 +349,12 @@ func _make_tree(cx: int, cz: int, h: int) -> void:
 	root.position = GridUtil.cell_to_world(cx, cz, 0.0)
 	add_child(root)
 
+	# 빌보드 나무 스프라이트(있으면). 없으면 아래 프리미티브 폴백.
+	var sprite := CharacterMesh.build_billboard("res://scripts/gen/props/tree.png", 1.8)
+	if sprite != null:
+		root.add_child(sprite)
+		return
+
 	var trunk := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.09
@@ -384,6 +391,34 @@ func _build_portal() -> void:
 	var cz := GridUtil.ROWS - 1
 	var center := LaneConfig.bridge_center()
 	var base := GridUtil.cell_to_world(center, cz, 0.0)
+
+	# 빌보드 포탈 스프라이트(있으면) + 상승 빛 입자 유지. 없으면 아래 프리미티브 폴백.
+	var sprite := CharacterMesh.build_billboard("res://scripts/gen/props/portal.png", 3.2)
+	if sprite != null:
+		sprite.position.x = base.x
+		sprite.position.z = base.z
+		_portal_sprite = sprite
+		add_child(sprite)
+		var motes := CPUParticles3D.new()
+		motes.amount = 22
+		motes.lifetime = 2.2
+		motes.position = base + Vector3(0, 0.5, 0.0)
+		motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		motes.emission_box_extents = Vector3(0.9, 0.1, 0.05)
+		motes.direction = Vector3(0, 1, 0)
+		motes.spread = 12.0
+		motes.initial_velocity_min = 0.5
+		motes.initial_velocity_max = 1.1
+		motes.gravity = Vector3.ZERO
+		motes.scale_amount_min = 0.05
+		motes.scale_amount_max = 0.12
+		var mote_mesh := SphereMesh.new()
+		mote_mesh.radius = 0.5
+		mote_mesh.height = 1.0
+		motes.mesh = mote_mesh
+		motes.mesh.surface_set_material(0, _mat(Color(0.6, 0.85, 1.0), Color(0.5, 0.8, 1.0), 2.5))
+		add_child(motes)
+		return
 
 	var stone := _mat(Color(0.48, 0.49, 0.52))
 	var stone_dark := _mat(Color(0.38, 0.39, 0.43))
@@ -477,6 +512,9 @@ func _build_portal() -> void:
 	_multimesh_layer(_mat(Color(0.52, 0.53, 0.56)), deco_rock, rock_xf)
 
 func _process(_delta: float) -> void:
+	if _portal_sprite != null:
+		var s := 1.0 + sin(Time.get_ticks_msec() / 360.0) * 0.03
+		_portal_sprite.scale = Vector3(s, s, 1.0)
 	if _portal_ring != null:
 		_portal_ring.rotate_z(_delta * 1.2)
 	if _portal_core != null:

@@ -44,6 +44,27 @@ static func build(glb_path: String, target_height: float, idle_names: Array = DE
 		play_loop(ap, idle_names)
 	return {"pivot": pivot, "anim": ap, "model": model}
 
+# 투명 PNG prop을 카메라를 향하는 빌보드 Sprite3D로 만든다(나무/통나무/마차/포탈).
+# world_size = 목표 크기(월드 유닛). fit="height"=높이 기준, "width"=너비 기준 스케일.
+# 밑면이 바닥(y=0)에 닿도록 position.y 자동 설정(호출부가 덮어쓸 수 있음).
+# 텍스처 없으면 null 반환 → 호출부가 프리미티브로 폴백.
+static func build_billboard(tex_path: String, world_size: float, fit: String = "height") -> Sprite3D:
+	if not ResourceLoader.exists(tex_path):
+		return null
+	var tex: Texture2D = load(tex_path)
+	if tex == null:
+		return null
+	var s := Sprite3D.new()
+	s.texture = tex
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
+	var denom := float(tex.get_height()) if fit == "height" else float(tex.get_width())
+	s.pixel_size = world_size / maxf(denom, 1.0)
+	s.position.y = float(tex.get_height()) * s.pixel_size * 0.5
+	return s
+
 # 루프 재생: names 중 처음 존재하는 클립을 LOOP로 재생. 없으면 첫 클립. 반환=재생한 이름.
 static func play_loop(ap: AnimationPlayer, names: Array) -> String:
 	for n in names:

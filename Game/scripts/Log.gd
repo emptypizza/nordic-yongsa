@@ -30,6 +30,13 @@ func _build_visual() -> void:
 	_body = Node3D.new()
 	add_child(_body)
 
+	# 빌보드 통나무 스프라이트(있으면). 폭을 통나무 길이에 맞춘다. 없으면 프리미티브 폴백.
+	var sprite := CharacterMesh.build_billboard("res://scripts/gen/props/log.png", length, "width")
+	if sprite != null:
+		sprite.position = Vector3(0, 0.34, 0)
+		_body.add_child(sprite)
+		return
+
 	var body := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.28

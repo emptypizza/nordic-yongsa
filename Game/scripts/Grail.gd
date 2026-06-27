@@ -31,9 +31,14 @@ func _mat(color: Color) -> StandardMaterial3D:
 	return m
 
 func _build_visual() -> void:
-	# 성배마차: 판자 짐칸 + 화물 + 천막(후프 살) + 바퀴(허브/살) + 상단 발광 성배.
+	# 성배마차: 빌보드 스프라이트(있으면) 또는 아래 프리미티브 폴백.
 	_body = Node3D.new()
 	add_child(_body)
+
+	var sprite := CharacterMesh.build_billboard("res://scripts/gen/props/cart.png", 1.7)
+	if sprite != null:
+		_body.add_child(sprite)
+		return
 
 	# 바닥 짐칸 판자.
 	var bed := MeshInstance3D.new()
