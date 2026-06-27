@@ -8,19 +8,29 @@ class Hero:
 	var name: String
 	var color: Color
 	var level: int
-	var glb: String   # 인게임 메시(glbs/). CharacterMesh로 자동 fit 후 사용.
-	func _init(p_id: String, p_name: String, p_color: Color, p_level: int, p_glb: String) -> void:
-		id = p_id
-		name = p_name
-		color = p_color
+	var glb: String           # 인게임 메시(glbs/). CharacterMesh로 자동 fit 후 사용.
+	var portrait_path: String # 카드 포트레이트용 렌더 이미지(없으면 "" → 역할 아이콘 폴백)
+	var badge_color: Color    # 레벨 배지 색
+	var role_icon: String     # 카드 역할 아이콘: "sword" | "heart" | "staff"
+	func _init(d: Dictionary, p_level: int) -> void:
+		id = d["id"]
+		name = d["name"]
+		color = d["color"]
 		level = p_level
-		glb = p_glb
+		glb = d["glb"]
+		portrait_path = d.get("portrait", "")
+		badge_color = d.get("badge", color.darkened(0.1))
+		role_icon = d.get("icon", "sword")
 
 # 불변 정의(레벨은 세이브에서 주입). 인덱스 = 카드 순서.
+# portrait: 기존 GLB 렌더 PNG가 있으면 카드에 띄운다(라비=Test Ch 렌더). 없으면 역할 아이콘으로 폴백.
 const DEFS := [
-	{"id": "ravi", "name": "라비", "color": Color(0.45, 0.62, 0.95), "glb": "res://scripts/glbs/Warrior 01.glb"},
-	{"id": "sohee", "name": "소희", "color": Color(0.95, 0.55, 0.72), "glb": "res://scripts/glbs/Healer 01.glb"},
-	{"id": "aron", "name": "아론", "color": Color(0.85, 0.45, 0.28), "glb": "res://scripts/glbs/Wizard 01.glb"},
+	{"id": "ravi", "name": "라비", "color": Color(0.45, 0.62, 0.95), "glb": "res://scripts/glbs/Warrior 01.glb",
+		"portrait": "res://scripts/Test Ch_0.png", "badge": Color(0.30, 0.45, 0.85), "icon": "sword"},
+	{"id": "sohee", "name": "소희", "color": Color(0.95, 0.55, 0.72), "glb": "res://scripts/glbs/Healer 01.glb",
+		"portrait": "", "badge": Color(0.85, 0.35, 0.55), "icon": "heart"},
+	{"id": "aron", "name": "아론", "color": Color(0.85, 0.45, 0.28), "glb": "res://scripts/glbs/Wizard 01.glb",
+		"portrait": "", "badge": Color(0.70, 0.40, 0.22), "icon": "staff"},
 ]
 
 static func count() -> int:
@@ -29,12 +39,12 @@ static func count() -> int:
 static func all() -> Array:
 	var out := []
 	for d in DEFS:
-		out.append(Hero.new(d["id"], d["name"], d["color"], SaveManager.get_hero_level(d["id"]), d["glb"]))
+		out.append(Hero.new(d, SaveManager.get_hero_level(d["id"])))
 	return out
 
 static func hero_at(index: int) -> Hero:
 	var d = DEFS[clampi(index, 0, DEFS.size() - 1)]
-	return Hero.new(d["id"], d["name"], d["color"], SaveManager.get_hero_level(d["id"]), d["glb"])
+	return Hero.new(d, SaveManager.get_hero_level(d["id"]))
 
 # 플레이어가 현재 조작하는 영웅(세이브 영속). 기본 라비(0).
 static func active_index() -> int:

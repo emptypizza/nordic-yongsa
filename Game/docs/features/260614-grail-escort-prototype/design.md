@@ -93,16 +93,16 @@ Game/
     GameManager.gd       # 상태(Playing/Win/Lose), 스테이지 난이도 적용, 적/통나무 스폰, 물 판정, HP/스코어/코인, 영웅 라이브 교체, 사운드·세이브 훅, 재시작
     GridUtil.gd          # 그리드↔월드 변환, 경계
     LaneConfig.gd        # (신규) 레인 타입(잔디/강/길) 결정론 배치, 다리/익사/통나무 파라미터
-    Board.gd             # (신규) 레인 타일(머티리얼별 MultiMesh 배칭) + 다리 + 숲(덤불/바위 MultiMesh) + 빛나는 포탈을 코드-빌드
+    Board.gd             # (신규) 레인 타일(머티리얼별 MultiMesh 배칭) + 다리 + 가장자리 소품(나무/덤불/바위/그루터기/상자/배럴/통나무더미) + 꽃 + 랜드마크(집/대장간/상점/울타리) + 계단·블록·파티클 포탈
     Log.gd               # (신규) 강 통나무 드리프트 플랫폼(래핑), 탑승 판정, 물 위 bob 시각 피드백
-    HeroRoster.gd        # (신규) 영웅 데이터(라비→Warrior / 소희→Healer / 아론→Wizard). 활성영웅·레벨은 SaveManager 영속, 라이브 교체 가능
+    HeroRoster.gd        # (신규) 영웅 데이터(라비→Warrior / 소희→Healer / 아론→Wizard) + portrait_path·badge_color·role_icon. 활성영웅·레벨은 SaveManager 영속, 라이브 교체 가능
     CharacterMesh.gd     # (신규) glbs/ 복셀 캐릭터를 타일 기준으로 정규화(고정 스케일+Idle 루프), pivot 래핑 로더
     Grail.gd             # 연속 전진, HP, 무적, Win/Death 신호 — 비주얼은 성배마차(몸체+캐노피+바퀴+발광 성배) + 호위 동행 3명
     Player.gd            # 4방향 grid hop(키 입력 트리거), 넉백 충돌, 통나무 탑승(ride)/익사 복귀(splash_reset). 메시=활성 영웅 glb(pivot), rebuild_visual()로 라이브 교체
     Enemy.gd             # 연속 직각 그리드 추적(스테이지 속도배수), 충돌 판정(1칸 넉백). 메시=일반몹→스프라이트 4종 랜덤 / 강한적→Boogeyman glb, 폴백=프리미티브
-    Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인/일시정지) + 하단 영웅카드(탭=라이브 교체) + 편집(코인으로 레벨업) + 스와이프/드래그 입력
+    Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인) + 하단 영웅카드(포트레이트·역할아이콘, 탭=라이브 교체) + 편집(코인 레벨업) + 스와이프/드래그. OS 이모지→노드 아이콘(Polygon2D 검/하트/지팡이, 드로운 금화)
     WindowFit.gd         # autoload: 데스크톱 창을 9:16으로 리사이즈(모바일/헤드리스 비활성)
-    LogicTests.gd        # GridUtil + LaneConfig + Log/강 헤드리스 셀프테스트, Tests.tscn으로 실행(26/26 PASS)
+    LogicTests.gd        # GridUtil + LaneConfig + Log/강 + 로스터/보드해시/HUD카드 헤드리스 셀프테스트, Tests.tscn으로 실행(30/30 PASS)
 ```
 
 - **autoload 4종**(project.godot 순서): `SaveManager` → `StageState` → `AudioManager` → `WindowFit`. SaveManager를 먼저 둬 AudioManager가 사운드 설정을 읽을 수 있게 한다.
@@ -117,6 +117,7 @@ Game/
 - **고정 각도 isometric 추적 카메라**: 성배(또는 성배·용사 중점)에 고정 오프셋, z 전진을 부드럽게 lerp 추적(길건너친구 룩).
 - 타깃 디스플레이는 모바일 세로형 1080×1920 포트레이트이며, 19칸 폭 보드가 잘리지 않도록 카메라는 keep-width로 둔다.
 - 카메라는 원근 → 직교(orthographic) 투영으로 전환한다. `Size`=직교 가시 폭(`KeepAspect=Width` 기준)이며, 각도/look-ahead 추적은 동일하게 유지한다. (`Size`·각도는 스크린샷 튜닝 대상)
+  - **2026-06-27 비주얼 패스**: `Size`를 7→**11**로 넓혀 보드 폭·가장자리 소품·전방 레인을 더 보여준다(`CAMERA_LOOK_AHEAD` 7→8.5, 오프셋 높이 11→12). 게임플레이/입력/액터 로직은 불변.
 - 데스크톱 테스트 창은 시작 시 모니터에 맞춰 9:16을 유지한 채 자동 리사이즈하고 중앙 정렬한다(`WindowFit` autoload). 모바일/헤드리스에서는 비활성화한다.
 - 세로 화면용 look-ahead를 적용해 카메라가 포커스보다 +z 앞을 바라보며, 액션은 화면 하단 1/3 근처에 두고 진행 레인이 위쪽으로 길게 차도록 한다.
 - **무드 라이팅**(2026-06-27): `ProceduralSkyMaterial` 한낮 하늘 + 하늘 기반 앰비언트 + 따뜻한 태양광
@@ -124,9 +125,10 @@ Game/
 - 캐릭터는 `glbs/` 복셀 메시, 배경/소품은 프리미티브 + 텍스처(점진 교체 중):
   - 바닥: **레인 타입별 타일**에 절차적 톱다운 텍스처(`gen/map/tiles/`: 잔디/강/흙길/널빤지, seamless)를
     albedo로 입힘. 텍스처가 없으면 기존 플랫 색으로 폴백. 강 중앙 통나무 다리 판자.
-  - 가장자리 숲: 잔디 레인 좌우 2칸에 나무(원기둥+둥근 잎 2단)·덤불(구)·바위(박스)를 결정론 배치.
+  - 가장자리 숲/소품: 잔디 레인 좌우 3칸에 나무·덤불·바위·그루터기·상자·배럴·통나무더미를 결정론 배치(단일메시는 MultiMesh). 잔디 위 3색 꽃 산포. 가장자리에 집/대장간(발광 화로)/상점/울타리 랜드마크.
   - 포탈(골): 끝 행 중앙에 돌기둥 2 + 상인방 + **발광 파란 코어(맥동)** + 회전 발광 링.
-  - 성배마차: 나무 짐칸 + 천 캐노피 + 굴러가는 바퀴 4 + 상단 발광 금색 성배(맥동) + 위아래 bob.
+  - 성배마차: 판자 짐칸(바닥+측면+앞뒤보드) + 화물 상자 + 천막(후프 살 3) + 바퀴 4(타이어+허브+살, 굴림) + 받침 위 발광 금색 성배(맥동) + 위아래 bob.
+  - 포탈(골): 석재 단상+계단 + 블록 4단 기둥 + 상인방 + 발광 코어/회전 링 + 상승 푸른 입자 + 양옆 바위 장식.
     **호위 동행 3명**(비선택 영웅 Healer/Wizard glb + Crow glb)이 마차 좌·우·뒤에 붙어 함께 전진(코스메틱, Idle 애니).
   - 통나무: x축으로 눕힌 갈색 원기둥(+밝은 결 스트라이프), 강 레인을 따라 드리프트.
   - 용사: **활성 영웅 glb**(라비=Warrior 01.glb) — `CharacterMesh`로 타일 기준 정규화, Idle 루프 +
@@ -166,7 +168,7 @@ Game/
 ## 9. 검증 환경 (참고)
 
 - 엔진 **Godot 4.7** (`4.7.stable.mono`). GDScript 프로젝트라 **.NET / DOTNET_ROOT 불필요**(mono 빌드라도 C# 없이 구동).
-- 헤드리스 셀프테스트 `Tests.tscn` **26/26 PASS** 확인됨(GridUtil + LaneConfig + Log/강 + 적 스프라이트, `godot --headless --path Game res://Tests.tscn`).
+- 헤드리스 셀프테스트 `Tests.tscn` **30/30 PASS** 확인됨(GridUtil + LaneConfig + Log/강 + 적 스프라이트 + 로스터 데이터 + 보드해시 결정성 + HUD 카드 생성, `godot --headless --path Game res://Tests.tscn`).
 - 메인 게임 헤드리스 구동 정상 확인됨(`godot --headless --path Game res://Main.tscn --quit-after 400`, exit 0, 스크립트/파스 에러 0). Title/StageSelect도 에러 0.
 - 신규 class_name(`MenuUI`) 추가 시 글로벌 클래스 캐시가 비면 파스 에러가 날 수 있으니 `godot --headless --path Game --import`로 캐시를 갱신한다.
 - 비주얼/손맛(레인·강·포탈·마차·HUD·사운드)은 에디터 F5로 확인.

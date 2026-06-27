@@ -21,8 +21,8 @@ var _enemy_speed_mul := 1.0
 var _spawn_timer := 0.0
 var _hud: Hud
 var _camera: Camera3D
-const CAMERA_OFFSET := Vector3(0, 11, -8)
-const CAMERA_LOOK_AHEAD := 7.0  # Look ahead on +z so portrait framing keeps action lower.
+const CAMERA_OFFSET := Vector3(0, 12, -8.5)
+const CAMERA_LOOK_AHEAD := 8.5  # Look ahead on +z so portrait framing keeps action lower.
 
 func _ready() -> void:
 	randomize()  # 적 스폰 위치 + 일반몹 종류가 매 실행마다 달라지게 시드 초기화
@@ -145,7 +145,7 @@ func _build_environment() -> void:
 
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.size = 7.0  # 직교 가시 폭(KeepAspect=Width 기준). 작을수록 줌인.
+	_camera.size = 11.0  # 직교 가시 폭(KeepAspect=Width 기준). mokup처럼 보드 폭·전방 레인을 더 보이게 확대.
 	_camera.keep_aspect = Camera3D.KEEP_WIDTH
 	_camera.position = Vector3(GridUtil.COLS / 2.0, 0, 0) + CAMERA_OFFSET
 	add_child(_camera)

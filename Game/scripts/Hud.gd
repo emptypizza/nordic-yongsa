@@ -61,6 +61,60 @@ func _label(text: String, size: int, color: Color) -> Label:
 	l.add_theme_constant_override("outline_size", 8)
 	return l
 
+# ── 노드 기반 아이콘 (OS 이모지 대체) ──────────────────────────
+func _poly(points: PackedVector2Array, color: Color) -> Polygon2D:
+	var p := Polygon2D.new()
+	p.polygon = points
+	p.color = color
+	return p
+
+func _disc(cx: float, cy: float, r: float, color: Color) -> Polygon2D:
+	var pts := PackedVector2Array()
+	for i in 18:
+		var a := TAU * float(i) / 18.0
+		pts.append(Vector2(cx + cos(a) * r, cy + sin(a) * r))
+	return _poly(pts, color)
+
+# 금화 아이콘(겹친 디스크). pos 중심에 놓는다.
+func _coin_icon(pos: Vector2, r: float) -> Node2D:
+	var root := Node2D.new()
+	root.position = pos
+	root.add_child(_disc(0, 0, r, Color(0.78, 0.58, 0.15)))
+	root.add_child(_disc(0, 0, r * 0.78, Color(1.0, 0.85, 0.30)))
+	root.add_child(_disc(0, 0, r * 0.42, Color(0.85, 0.65, 0.18)))
+	return root
+
+# 역할 아이콘: 검(전사) / 하트(힐러) / 지팡이(마법사). h=대략 반높이(px).
+func _role_icon(icon: String, h: float) -> Node2D:
+	var root := Node2D.new()
+	match icon:
+		"sword":
+			root.add_child(_poly(PackedVector2Array([
+				Vector2(-0.12 * h, -h), Vector2(0.12 * h, -h),
+				Vector2(0.17 * h, 0.30 * h), Vector2(-0.17 * h, 0.30 * h)]), Color(0.90, 0.93, 0.98)))
+			root.add_child(_poly(PackedVector2Array([
+				Vector2(-0.5 * h, 0.30 * h), Vector2(0.5 * h, 0.30 * h),
+				Vector2(0.5 * h, 0.45 * h), Vector2(-0.5 * h, 0.45 * h)]), Color(0.88, 0.66, 0.20)))
+			root.add_child(_poly(PackedVector2Array([
+				Vector2(-0.10 * h, 0.45 * h), Vector2(0.10 * h, 0.45 * h),
+				Vector2(0.10 * h, 0.90 * h), Vector2(-0.10 * h, 0.90 * h)]), Color(0.45, 0.30, 0.18)))
+			root.add_child(_disc(0, 0.95 * h, 0.12 * h, Color(0.88, 0.66, 0.20)))
+		"heart":
+			var pts := PackedVector2Array()
+			for i in 25:
+				var t := TAU * float(i) / 24.0
+				var x := 16.0 * pow(sin(t), 3.0)
+				var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
+				pts.append(Vector2(x / 16.0 * h, y / 16.0 * h * 0.9 - 0.08 * h))
+			root.add_child(_poly(pts, Color(0.95, 0.42, 0.56)))
+		"staff":
+			root.add_child(_poly(PackedVector2Array([
+				Vector2(-0.09 * h, -0.30 * h), Vector2(0.09 * h, -0.30 * h),
+				Vector2(0.09 * h, 0.92 * h), Vector2(-0.09 * h, 0.92 * h)]), Color(0.52, 0.35, 0.20)))
+			root.add_child(_disc(0, -0.52 * h, 0.32 * h, Color(0.45, 0.80, 1.0)))
+			root.add_child(_disc(0, -0.52 * h, 0.18 * h, Color(0.88, 0.96, 1.0)))
+	return root
+
 # ── 상단 바 ────────────────────────────────────────────────────
 func _build_top_bar() -> void:
 	# 좌측: Guardian, HQ + HP바 + 레벨
@@ -107,7 +161,7 @@ func _build_top_bar() -> void:
 	_score_label.offset_bottom = 160
 	add_child(_score_label)
 
-	_best_label = _label("⚔ BEST 0", 38, Color(1, 0.92, 0.5))
+	_best_label = _label("BEST 0", 38, Color(1, 0.92, 0.5))
 	_best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_best_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_best_label.offset_top = 152
@@ -123,9 +177,11 @@ func _build_top_bar() -> void:
 	coin_pill.offset_top = 40
 	coin_pill.offset_bottom = 110
 	add_child(coin_pill)
-	_coin_label = _label("🪙 0", 36, Color(1, 0.86, 0.3))
-	_coin_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_coin_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	coin_pill.add_child(_coin_icon(Vector2(34, 35), 22))  # 드로운 금화 아이콘(이모지 대체)
+	_coin_label = _label("0", 36, Color(1, 0.86, 0.3))
+	_coin_label.position = Vector2(62, 0)
+	_coin_label.custom_minimum_size = Vector2(70, 70)
+	_coin_label.size = Vector2(70, 70)
 	_coin_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	coin_pill.add_child(_coin_label)
 
@@ -193,6 +249,16 @@ func refresh_hero_cards() -> void:
 	if _hero_bar != null:
 		_populate_hero_cards()
 
+# 생성된 영웅 카드 수(셀프테스트용). 카드마다 투명 탭 버튼이 1개 붙는다.
+func hero_card_count() -> int:
+	if _hero_bar == null:
+		return 0
+	var n := 0
+	for c in _hero_bar.get_children():
+		if c is Button and c.has_meta("hero_card"):
+			n += 1
+	return n
+
 func _make_hero_card(parent: Control, hero, index: int, x: float, w: float, selected: bool) -> void:
 	var card := Panel.new()
 	card.set_meta("hero_card", true)
@@ -206,14 +272,30 @@ func _make_hero_card(parent: Control, hero, index: int, x: float, w: float, sele
 	card.size = Vector2(w, 200)
 	parent.add_child(card)
 
-	# 상단 영웅색 띠 (포트레이트 자리)
+	# 상단 포트레이트: 렌더 이미지(portrait_path)가 있으면 띄우고, 없으면 역할 아이콘.
 	var portrait := Panel.new()
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.add_theme_stylebox_override("panel", _panel_style(hero.color, 16))
+	portrait.clip_contents = true
+	portrait.add_theme_stylebox_override("panel", _panel_style(hero.color.darkened(0.04), 16))
 	portrait.position = Vector2(16, 16)
 	portrait.custom_minimum_size = Vector2(w - 32, 110)
 	portrait.size = Vector2(w - 32, 110)
 	card.add_child(portrait)
+	if hero.portrait_path != "" and ResourceLoader.exists(hero.portrait_path):
+		var tex := TextureRect.new()
+		tex.texture = load(hero.portrait_path)
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		portrait.add_child(tex)
+		var role_badge := _role_icon(hero.role_icon, 15.0)  # 이미지 위 작은 역할 배지
+		role_badge.position = Vector2(24, 28)
+		portrait.add_child(role_badge)
+	else:
+		var icon := _role_icon(hero.role_icon, 42.0)
+		icon.position = Vector2((w - 32) / 2.0, 55.0)
+		portrait.add_child(icon)
 
 	var name_lbl := _label(hero.name, 36, Color(0.20, 0.18, 0.14))
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -227,7 +309,7 @@ func _make_hero_card(parent: Control, hero, index: int, x: float, w: float, sele
 	# 레벨 배지 (우상단)
 	var lv := Panel.new()
 	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lv.add_theme_stylebox_override("panel", _panel_style(hero.color.darkened(0.1), 18, Color.WHITE, 3))
+	lv.add_theme_stylebox_override("panel", _panel_style(hero.badge_color, 18, Color.WHITE, 3))
 	lv.position = Vector2(w - 56, 8)
 	lv.custom_minimum_size = Vector2(48, 48)
 	lv.size = Vector2(48, 48)
@@ -289,7 +371,7 @@ func _build_edit_panel() -> void:
 	title.offset_bottom = 110
 	panel.add_child(title)
 
-	var coin_lbl := _label("🪙 보유 코인 %d" % SaveManager.get_total_coins(), 38, Color(1, 0.86, 0.3))
+	var coin_lbl := _label("보유 코인  %d" % SaveManager.get_total_coins(), 38, Color(1, 0.86, 0.3))
 	coin_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	coin_lbl.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	coin_lbl.offset_top = 120
@@ -324,6 +406,9 @@ func _build_edit_row(panel: Panel, hero, index: int, selected: bool, y: float) -
 	swatch.custom_minimum_size = Vector2(90, 90)
 	swatch.size = Vector2(90, 90)
 	panel.add_child(swatch)
+	var sw_icon := _role_icon(hero.role_icon, 30.0)  # 색 블록 위 역할 아이콘
+	sw_icon.position = Vector2(45, 45)
+	swatch.add_child(sw_icon)
 
 	var name_lbl := _label("%s   Lv %d" % [hero.name, hero.level], 40, Color(0.96, 0.96, 0.9))
 	name_lbl.position = Vector2(150, y + 16)
@@ -349,7 +434,7 @@ func _build_edit_row(panel: Panel, hero, index: int, selected: bool, y: float) -
 	# 레벨업 버튼 (누적 코인 소비)
 	var cost := _hero_levelup_cost(hero.level)
 	var up := Button.new()
-	up.text = "레벨업\n🪙%d" % cost
+	up.text = "레벨업\n%d 코인" % cost
 	up.add_theme_font_size_override("font_size", 28)
 	up.add_theme_stylebox_override("normal", _panel_style(Color(0.85, 0.62, 0.20), 16))
 	up.add_theme_stylebox_override("hover", _panel_style(Color(0.92, 0.70, 0.26), 16))
@@ -486,10 +571,10 @@ func set_health(hp: int, max_hp: int) -> void:
 
 func set_score(score: int, best: int) -> void:
 	_score_label.text = str(score)
-	_best_label.text = "⚔ BEST %d" % best
+	_best_label.text = "BEST %d" % best
 
 func set_coins(n: int) -> void:
-	_coin_label.text = "🪙 %d" % n
+	_coin_label.text = str(n)
 
 func show_result(title: String, color: Color) -> void:
 	_result_label.text = title

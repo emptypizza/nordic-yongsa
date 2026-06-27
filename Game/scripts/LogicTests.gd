@@ -66,6 +66,25 @@ func _ready() -> void:
 			spr_ok = false
 	_check("enemy-sprites-load", spr_ok)
 
+	# 영웅 로스터 데이터: 3명, 포트레이트는 빈값이거나 실제 존재, 역할 아이콘은 정의된 셋 중 하나
+	var roster_ok := HeroRoster.all().size() == 3
+	for h in HeroRoster.all():
+		if h.portrait_path != "" and not ResourceLoader.exists(h.portrait_path):
+			roster_ok = false
+		if not (h.role_icon in ["sword", "heart", "staff"]):
+			roster_ok = false
+	_check("hero-roster-data", roster_ok)
+
+	# Board 장식 해시 결정성: 같은 입력→같은 출력(리플레이 안정), 다른 입력→보통 다른 출력
+	_check("board-hash-deterministic",
+		Board._hash2(3, 7) == Board._hash2(3, 7) and Board._hash2(3, 7) != Board._hash2(4, 7))
+
+	# HUD: 영웅 카드가 항상 로스터 수만큼 생성되는지
+	var hud := Hud.new()
+	add_child(hud)
+	_check("hud-hero-cards", hud.hero_card_count() == HeroRoster.count())
+	hud.free()
+
 	print("[selftest] ALL PASS" if _fail == 0 else "[selftest] %d FAIL" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 
