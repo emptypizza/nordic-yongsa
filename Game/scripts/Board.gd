@@ -9,9 +9,11 @@ extends Node3D
 # 프로젝트 규칙: 액터/배경 모두 코드-빌드, 메시는 자식 노드, 프리미티브 placeholder.
 
 const TILE_DIR := "res://scripts/gen/map/tiles/"
+const WATER_SHADER := "res://scripts/shaders/water.gdshader"
 
 var _mat_cache: Dictionary = {}
 var _tex_cache: Dictionary = {}
+var _water_mat_cache: ShaderMaterial
 var _portal_core: MeshInstance3D
 var _portal_ring: MeshInstance3D
 var _portal_sprite: Sprite3D
@@ -65,6 +67,20 @@ func _ground_pair(tex_name: String, flat_a: Color, flat_b: Color, emission: Colo
 		_ground_mat(tex, Color(0.87, 0.91, 0.83), emission, energy),
 	]
 
+# 흐르는 강 셰이더 머티리얼(있으면). 컴파일/누락 시 null → 호출부가 텍스처 물타일로 폴백.
+func _water_mat() -> ShaderMaterial:
+	if _water_mat_cache != null:
+		return _water_mat_cache
+	if not ResourceLoader.exists(WATER_SHADER):
+		return null
+	var sh: Shader = load(WATER_SHADER)
+	if sh == null:
+		return null
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	_water_mat_cache = m
+	return m
+
 func _ground_single(tex_name: String, flat: Color, emission: Color = Color.BLACK, energy: float = 1.0) -> StandardMaterial3D:
 	var tex := _load_tex(tex_name)
 	if tex == null:
@@ -76,7 +92,7 @@ static func _hash2(a: int, b: int) -> int:
 	return absi(h)
 
 # 같은 메시·머티리얼 인스턴스들을 MultiMesh 1개로 묶어 그린다(드로우콜 절감).
-func _multimesh_layer(mat: StandardMaterial3D, mesh: Mesh, transforms: Array) -> void:
+func _multimesh_layer(mat: Material, mesh: Mesh, transforms: Array) -> void:
 	if transforms.is_empty():
 		return
 	var mm := MultiMesh.new()
@@ -90,50 +106,73 @@ func _multimesh_layer(mat: StandardMaterial3D, mesh: Mesh, transforms: Array) ->
 	mmi.material_override = mat
 	add_child(mmi)
 
+# 텍스처에 틴트만 달리한 바닥 머티리얼(텍스처 없으면 flat 색 폴백). 잔디/길 색 변주에 사용.
+func _tinted(tex_name: String, tint: Color, flat: Color) -> StandardMaterial3D:
+	var tex := _load_tex(tex_name)
+	if tex == null:
+		return _mat(flat)
+	return _ground_mat(tex, tint, Color.BLACK, 1.0)
+
 func _build_tiles() -> void:
-	# 레인별 팔레트 (살짝 명암 교차해 손맛 있는 잔디 느낌).
-	# 절차적 톱다운 타일 텍스처가 있으면 입히고, 없으면 평면 색으로 폴백한다.
-	# 570개(19×30) 타일을 머티리얼별 MultiMesh로 배칭해 드로우콜을 ~7개로 줄인다.
-	var grass := _ground_pair("grass", Color(0.46, 0.73, 0.31), Color(0.41, 0.68, 0.28))
-	var path := _ground_pair("path", Color(0.64, 0.49, 0.33), Color(0.58, 0.44, 0.29))
+	# 레인별 팔레트 + 잔디 3틴트 변주. 텍스처가 있으면 입히고 없으면 평면 색 폴백.
+	# 잔디/길은 얇은 박스로 만들어 레인 경계에 단차(블록 깊이)를 준다(태양광이 측면을 어둡게).
+	# 570개(19×30) 타일을 머티리얼별 MultiMesh로 배칭해 드로우콜을 ~8개로 유지한다.
 	var water := _ground_pair("water", Color(0.20, 0.55, 0.86), Color(0.16, 0.48, 0.80), Color(0.05, 0.18, 0.32), 0.6)
-	var grass_a: StandardMaterial3D = grass[0]
-	var grass_b: StandardMaterial3D = grass[1]
-	var path_a: StandardMaterial3D = path[0]
-	var path_b: StandardMaterial3D = path[1]
-	var water_a: StandardMaterial3D = water[0]
-	var water_b: StandardMaterial3D = water[1]
+	# 잔디 3틴트(명암·온기 변주) + 길 2틴트.
+	var grass_a := _tinted("grass", Color(1.0, 1.0, 1.0), Color(0.46, 0.73, 0.31))
+	var grass_b := _tinted("grass", Color(0.93, 0.96, 0.89), Color(0.43, 0.70, 0.29))
+	var grass_c := _tinted("grass", Color(1.03, 1.0, 0.92), Color(0.50, 0.76, 0.33))
+	var grass_tints := [grass_a, grass_b, grass_c]
+	var path_a := _tinted("path", Color(1.0, 1.0, 1.0), Color(0.64, 0.49, 0.33))
+	var path_b := _tinted("path", Color(0.90, 0.87, 0.81), Color(0.58, 0.44, 0.29))
+	# 강: 흐르는 물 셰이더(단일 머티리얼 1배치). 셰이더 없으면 기존 텍스처 물타일 even/odd로 폴백.
+	var water_flow: Material = _water_mat()
+	var water_a: Material = water_flow if water_flow != null else water[0]
+	var water_b: Material = water_flow if water_flow != null else water[1]
 	var plank := _ground_single("plank", Color(0.55, 0.40, 0.24))
 
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(1, 1)  # 모든 타일이 공유하는 단일 1×1 평면 메시.
+	var block := BoxMesh.new()
+	block.size = Vector3(1.0, 0.22, 1.0)  # 잔디/길 블록(측면 단차).
+	var flat := PlaneMesh.new()
+	flat.size = Vector2(1, 1)  # 물/다리용 평면.
+	const GRASS_TOP := -0.11  # box center → top=0 (액터 접지면)
+	const PATH_TOP := -0.16   # box center → top=-0.05 (잔디보다 낮은 흙길)
 
-	# 머티리얼 → 인스턴스 변환 목록. 같은 머티리얼은 한 MultiMesh로 묶인다.
+	# 머티리얼 → 변환목록 + 머티리얼별 메시. 같은 머티리얼은 한 MultiMesh로 묶인다.
 	var batches: Dictionary = {}
+	var mesh_of: Dictionary = {}
 	for z in GridUtil.ROWS:
 		var lane := LaneConfig.lane_type(z)
 		for x in GridUtil.COLS:
 			var even := (x + z) % 2 == 0
-			var mat: StandardMaterial3D
+			var mat: Material
+			var mesh: Mesh
 			var y := 0.0
 			match lane:
 				LaneConfig.LaneType.RIVER:
 					if LaneConfig.is_bridge_col(x):
 						mat = plank   # 통나무 다리
+						mesh = flat
 						y = 0.02
 					else:
 						mat = water_a if even else water_b
+						mesh = flat
 						y = -0.10
 				LaneConfig.LaneType.PATH:
 					mat = path_a if even else path_b
+					mesh = block
+					y = PATH_TOP
 				_:
-					mat = grass_a if even else grass_b
+					mat = grass_tints[_hash2(x * 5 + 2, z * 3 + 1) % 3]
+					mesh = block
+					y = GRASS_TOP
 			if not batches.has(mat):
 				batches[mat] = []
+				mesh_of[mat] = mesh
 			batches[mat].append(Transform3D(Basis(), GridUtil.cell_to_world(x, z, y)))
 
 	for mat in batches:
-		_multimesh_layer(mat, plane, batches[mat])
+		_multimesh_layer(mat, mesh_of[mat], batches[mat])
 
 func _build_edge_forest() -> void:
 	# 가장자리(좌우 3칸) 잔디 레인에 숲·소품을 결정론적으로 촘촘히 배치 → 보드를 둘러싼다.
@@ -149,8 +188,8 @@ func _build_edge_forest() -> void:
 			continue
 		for x in edge_cols:
 			var h := _hash2(x, z)
-			if h % 12 < 3:
-				continue  # 일부는 빈 잔디로 남겨 숨통
+			if h % 16 < 2:
+				continue  # 일부만 빈 잔디로 남겨 숨통(mokup처럼 가장자리를 촘촘히)
 			var yaw := float(h % 360) * 0.0174533
 			match h % 9:
 				0, 1: _make_tree(x, z, h)
@@ -228,8 +267,8 @@ func _build_flowers() -> void:
 			continue
 		for x in GridUtil.COLS:
 			var h := _hash2(x * 7 + 3, z * 5 + 1)
-			if h % 9 != 0:
-				continue  # 약 11%만 꽃
+			if h % 6 != 0:
+				continue  # 약 17%에 꽃(mokup처럼 잔디를 더 화사하게)
 			var xf := Transform3D(Basis(), GridUtil.cell_to_world(x, z, 0.06) + Vector3((float(h % 5) - 2.0) * 0.12, 0, (float(h % 3) - 1.0) * 0.12))
 			match h % 3:
 				0: reds.append(xf)

@@ -30,6 +30,8 @@ const KNIGHT_TEX := {
 }
 
 func _ready() -> void:
+	# 발밑 블롭 그림자(self 자식 → hop/스쿼시와 무관하게 바닥에 머문다). 영웅 교체와도 독립.
+	add_child(CharacterMesh.make_blob_shadow(0.40))
 	_build_visual()
 	position = GridUtil.cell_to_world(cx, cz, 0.0)
 

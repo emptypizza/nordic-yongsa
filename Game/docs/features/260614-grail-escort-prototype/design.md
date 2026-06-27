@@ -14,6 +14,16 @@ created: 2026-06-14
 > 영웅 로스터(라비/소희/아론), 스코어/코인, 목업형 HUD를 얹었다. `mokup1.png` 비주얼이
 > 기준. 마일스톤 계획서: `260627-gilgeonneo-yongsadeul-mockup/plan.md`. 아래 설계에
 > 변경 사항을 동기화했다(이 문서가 단일 진실).
+>
+> **2026-06-28 업데이트 — `mokup1.png` 비주얼 고퀄리티 패스(Godot 엔진 전용)**: 외부 생성 없이
+> Godot 노드·GDScript·리소스만으로 인게임 비주얼을 끌어올렸다 — (1) **흐르는 강** GLES3 spatial
+> 셰이더(`shaders/water.gdshader`, 월드 좌표 기반 seamless 파도+포말 발광), (2) **타일 입체화**
+> (잔디=살짝 솟은 박스 3색 변주, 흙길=함몰 박스 2색), (3) **무드 라이팅 강화**(채도·블룸 상향 +
+> 반대편 채움광으로 그늘면 복원), (4) **발밑 블롭 그림자**(빌보드 캐릭터 접지감), (5) **이동 가이드
+> reticle**(`MoveGuide.gd`, 발밑 흰 하이라이트 박스 맥동), (6) 가장자리 숲·꽃 밀도 상향.
+> **+ L/R 스프라이트 버그 수정**: 좌우 이동 시 주인공이 반대로 보이던 버그를 `knight_left/right.png`
+> 콘텐츠 스왑으로 해결(추출 단계 라벨이 뒤바뀌어 있었음, 코드 로직은 불변). 계획서:
+> `260628-mokup1-visual-upgrade/plan.md`.
 
 ## 1. 게임 개요
 
@@ -93,7 +103,9 @@ Game/
     GameManager.gd       # 상태(Playing/Win/Lose), 스테이지 난이도 적용, 적/통나무 스폰, 물 판정, HP/스코어/코인, 영웅 라이브 교체, 사운드·세이브 훅, 재시작
     GridUtil.gd          # 그리드↔월드 변환, 경계
     LaneConfig.gd        # (신규) 레인 타입(잔디/강/길) 결정론 배치, 다리/익사/통나무 파라미터
-    Board.gd             # (신규) 레인 타일(머티리얼별 MultiMesh 배칭) + 다리 + 가장자리 소품(나무/덤불/바위/그루터기/상자/배럴/통나무더미) + 꽃 + 랜드마크(집/대장간/상점/울타리) + 계단·블록·파티클 포탈
+    Board.gd             # (신규) 레인 타일(머티리얼별 MultiMesh 배칭, 잔디/흙길=솟은·함몰 박스, 강=흐르는 물 셰이더) + 다리 + 가장자리 소품(나무/덤불/바위/그루터기/상자/배럴/통나무더미) + 꽃 + 랜드마크(집/대장간/상점/울타리) + 계단·블록·파티클 포탈
+    shaders/water.gdshader # (신규, 2026-06-28) GLES3-safe spatial. 월드 좌표 기반 seamless 파도+포말 발광. 강 타일 단일 배치
+    MoveGuide.gd         # (신규, 2026-06-28) class_name MoveGuide. 플레이어 발밑 흰 하이라이트 박스 reticle(4변, 맥동). 시각 전용, GameManager가 attach(player)
     Log.gd               # (신규) 강 통나무 드리프트 플랫폼(래핑), 탑승 판정, 물 위 bob 시각 피드백
     HeroRoster.gd        # (신규) 영웅 데이터(라비→Warrior / 소희→Healer / 아론→Wizard) + portrait_path·badge_color·role_icon. 활성영웅·레벨은 SaveManager 영속, 라이브 교체 가능
     CharacterMesh.gd     # (신규) glbs/ 복셀 캐릭터를 타일 기준으로 정규화(고정 스케일+Idle 루프), pivot 래핑 로더
@@ -102,7 +114,7 @@ Game/
     Enemy.gd             # 연속 직각 그리드 추적(스테이지 속도배수), 충돌 판정(1칸 넉백). 메시=일반몹→스프라이트 4종 랜덤 / 강한적→Boogeyman glb, 폴백=프리미티브
     Hud.gd               # 목업 HUD: 상단(Guardian/HP바/스코어/BEST/코인) + 하단 영웅카드(포트레이트·역할아이콘, 탭=라이브 교체) + 편집(코인 레벨업) + 스와이프/드래그. OS 이모지→노드 아이콘(Polygon2D 검/하트/지팡이, 드로운 금화)
     WindowFit.gd         # autoload: 데스크톱 창을 9:16으로 리사이즈(모바일/헤드리스 비활성)
-    LogicTests.gd        # GridUtil + LaneConfig + Log/강 + 로스터/보드해시/HUD카드 헤드리스 셀프테스트, Tests.tscn으로 실행(30/30 PASS)
+    LogicTests.gd        # GridUtil + LaneConfig + Log/강 + 적·기사 스프라이트 + 물셰이더/MoveGuide + 로스터/보드해시/HUD카드 헤드리스 셀프테스트, Tests.tscn으로 실행(33/33 PASS)
 ```
 
 - **autoload 4종**(project.godot 순서): `SaveManager` → `StageState` → `AudioManager` → `WindowFit`. SaveManager를 먼저 둬 AudioManager가 사운드 설정을 읽을 수 있게 한다.
@@ -120,8 +132,12 @@ Game/
   - **2026-06-27 비주얼 패스**: `Size`를 7→**11**로 넓혀 보드 폭·가장자리 소품·전방 레인을 더 보여준다(`CAMERA_LOOK_AHEAD` 7→8.5, 오프셋 높이 11→12). 게임플레이/입력/액터 로직은 불변.
 - 데스크톱 테스트 창은 시작 시 모니터에 맞춰 9:16을 유지한 채 자동 리사이즈하고 중앙 정렬한다(`WindowFit` autoload). 모바일/헤드리스에서는 비활성화한다.
 - 세로 화면용 look-ahead를 적용해 카메라가 포커스보다 +z 앞을 바라보며, 액션은 화면 하단 1/3 근처에 두고 진행 레인이 위쪽으로 길게 차도록 한다.
-- **무드 라이팅**(2026-06-27): `ProceduralSkyMaterial` 한낮 하늘 + 하늘 기반 앰비언트 + 따뜻한 태양광
-  + Filmic 톤맵 + 약한 블룸(발광 포탈/성배 강조). `mokup1.png`의 밝은 러시 톤.
+- **무드 라이팅**(2026-06-27, 2026-06-28 강화): `ProceduralSkyMaterial` 한낮 하늘 + 하늘 기반 앰비언트
+  + 따뜻한 태양광(`energy 1.35`, 부드러운 그림자 `shadow_opacity 0.72`/`blur 1.4`) + Filmic 톤맵
+  (`exposure 1.05`). **2026-06-28**: `adjustment_*`(밝기 1.03·대비 1.06·**채도 1.16**)와 강한 블룸
+  (`glow_intensity 0.55`·`SCREEN` 블렌드)으로 `mokup1.png`의 쨍한 러시 톤·발광을 강조하고,
+  **반대편 채움광**(`DirectionalLight3D`, 그림자 off, 차가운 하늘색 `0.42`)으로 캐릭터·동행 glb의
+  그늘면이 검게 죽지 않게 복원했다.
 - 캐릭터는 `glbs/` 복셀 메시, 배경/소품은 프리미티브/빌보드 + 텍스처(점진 교체 중):
   - **2026-06-27 prop 빌보드 패스**: 나무·통나무·성배마차·포탈 4종을 생성형 2D 아트로 교체.
     higgsfield `z_image` 생성 → 배경 제거(투명 PNG) → `scripts/gen/props/{tree,log,cart,portal}.png`.
@@ -130,6 +146,11 @@ Game/
     포탈은 빌보드 + 상승 파티클 유지(회전 링·맥동 코어 제거), 성배마차는 빌보드 + bob 유지(바퀴 굴림 제거).
   - 바닥: **레인 타입별 타일**에 절차적 톱다운 텍스처(`gen/map/tiles/`: 잔디/강/흙길/널빤지, seamless)를
     albedo로 입힘. 텍스처가 없으면 기존 플랫 색으로 폴백. 강 중앙 통나무 다리 판자.
+    - **2026-06-28 입체화·흐르는 강**: 잔디·흙길 타일을 평면(PlaneMesh)에서 **살짝 솟은 박스**(BoxMesh)로
+      바꿔 입체감을 줬다 — 잔디는 윗면 y=0의 3색 톤 변주(`_hash2`로 분포), 흙길은 윗면 y=−0.05로
+      **함몰**시켜 길이 패인 느낌. 강 타일은 `shaders/water.gdshader`(GLES3-safe spatial, **월드 좌표
+      기반**이라 타일 경계가 이어짐) 단일 배치로 **흐르는 물**: 사인 합성 파도 + 포말 크레스트(EMISSION
+      → 블룸) + 심/천수 색 믹스. 셰이더 로드 실패 시 평면 색 폴백.
   - 가장자리 숲/소품: 잔디 레인 좌우 3칸에 나무·덤불·바위·그루터기·상자·배럴·통나무더미를 결정론 배치(단일메시는 MultiMesh). 잔디 위 3색 꽃 산포. 가장자리에 집/대장간(발광 화로)/상점/울타리 랜드마크.
   - 포탈(골): 끝 행 중앙에 돌기둥 2 + 상인방 + **발광 파란 코어(맥동)** + 회전 발광 링.
   - 성배마차: 판자 짐칸(바닥+측면+앞뒤보드) + 화물 상자 + 천막(후프 살 3) + 바퀴 4(타이어+허브+살, 굴림) + 받침 위 발광 금색 성배(맥동) + 위아래 bob.
@@ -145,6 +166,13 @@ Game/
     (네 텍스처가 같은 픽셀 높이라 스왑해도 월드 스케일·접지 일정), 우측=좌측 좌우반전.
     스프라이트가 없으면 **활성 영웅 glb**(라비=Warrior 01.glb, `CharacterMesh` 정규화 + 머리카락 흰색
     `recolor_parts`)로 폴백 — 헤드리스/누락 안전. 동행/적은 무관.
+    **2026-06-28 L/R 버그 수정**: 좌우 이동 시 스프라이트가 **반대로** 보이던 버그를 수정 —
+    추출 단계에서 `knight_left.png`/`knight_right.png` 라벨이 뒤바뀌어 저장돼 있었다(파일 내용이
+    실제 향하는 방향과 반대). 두 PNG **콘텐츠를 스왑**해 교정(코드의 방향→키 매핑은 불변).
+    캡처로 `move_left`가 좌향 스프라이트를 띄우는 것을 재확인.
+    **발밑 블롭 그림자**: 빌보드는 실제 그림자를 안 드리우므로 `CharacterMesh.make_blob_shadow()`로
+    바닥에 반투명 검은 원판(unshaded, 깊이 미기록)을 깔아 접지감을 준다 — Player 루트의 자식이라
+    hop/스쿼시와 무관하게 바닥에 머문다.
   - 적: **일반 몬스터(잡몹)는 스프라이트 4종 중 랜덤**(sprite-forge `gen/{goblin,slime,skeleton,bat}/`,
     빌보드 2x2 idle) — 잡몹마다 종류가 달라 변화를 준다. **강한 적은 `Boogeyman 01.glb`**(크고 느림, 3D 메시,
     이동 방향 회전 + 기절 흔들림). 둘 다 없으면 프리미티브 박스 폴백.
@@ -168,6 +196,11 @@ Game/
 - **Android export** — 헤드리스 `--export-debug "Android"` → `Game/build/nordic.apk` 정상 생성(exit 0). 경고: 프로젝트 아이콘 미설정(비치명적).
 - **주인공 기사 빌보드(2026-06-27)** — `Game/build/` 레퍼런스 영상에서 흰머리 기사를 추출·배경제거·정규화해
   `gen/hero/knight_{front,back,left,right}.png` 4방향 빌보드로 Player에 적용(이동 방향 텍스처 스왑). `LogicTests`에 `knight-sprites-load` 추가.
+- **`mokup1.png` 비주얼 고퀄리티 패스(2026-06-28, Godot 엔진 전용)** — 외부 생성 없이 Godot 노드/셰이더/리소스만으로:
+  흐르는 강 셰이더(`shaders/water.gdshader`), 잔디·흙길 타일 박스 입체화(솟음/함몰), 라이팅 강화(채도·블룸 + 채움광),
+  발밑 블롭 그림자, 이동 가이드 reticle(`MoveGuide.gd`), 숲·꽃 밀도 상향. **L/R 스프라이트 반전 버그 수정**
+  (`knight_left/right.png` 콘텐츠 스왑). `LogicTests`에 `water-shader-loads`·`moveguide-builds` 추가(33/33 PASS).
+  계획서: `260628-mokup1-visual-upgrade/plan.md`.
 
 **여전히 범위 밖 / 남은 과제:**
 - 에셋 주의: `Game/scripts/glbs/`의 `*_N.png`(개당 ~100~200B, 약 2232개)는 **glTF가 추출한 머티리얼 팔레트 텍스처**로,
@@ -180,7 +213,9 @@ Game/
 ## 9. 검증 환경 (참고)
 
 - 엔진 **Godot 4.7** (`4.7.stable.mono`). GDScript 프로젝트라 **.NET / DOTNET_ROOT 불필요**(mono 빌드라도 C# 없이 구동).
-- 헤드리스 셀프테스트 `Tests.tscn` **30/30 PASS** 확인됨(GridUtil + LaneConfig + Log/강 + 적 스프라이트 + 로스터 데이터 + 보드해시 결정성 + HUD 카드 생성, `godot --headless --path Game res://Tests.tscn`).
+- 헤드리스 셀프테스트 `Tests.tscn` **33/33 PASS** 확인됨(GridUtil + LaneConfig + Log/강 + 적·기사 스프라이트
+  + 물셰이더 로드 + MoveGuide 빌드 + 로스터 데이터 + 보드해시 결정성 + HUD 카드 생성,
+  `godot --headless --path Game res://Tests.tscn`).
 - 메인 게임 헤드리스 구동 정상 확인됨(`godot --headless --path Game res://Main.tscn --quit-after 400`, exit 0, 스크립트/파스 에러 0). Title/StageSelect도 에러 0.
-- 신규 class_name(`MenuUI`) 추가 시 글로벌 클래스 캐시가 비면 파스 에러가 날 수 있으니 `godot --headless --path Game --import`로 캐시를 갱신한다.
+- 신규 class_name(`MenuUI`/`MoveGuide`) 추가 시 글로벌 클래스 캐시가 비면 파스 에러가 날 수 있으니 단일 씬 헤드리스 실행 전에 `godot --headless --path Game --import`로 캐시를 갱신한다.
 - 비주얼/손맛(레인·강·포탈·마차·HUD·사운드)은 에디터 F5로 확인.

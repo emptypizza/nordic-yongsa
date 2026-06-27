@@ -74,6 +74,13 @@ func _ready() -> void:
 			knight_ok = false
 	_check("knight-sprites-load", knight_ok)
 
+	# 비주얼 업그레이드: 흐르는 강 셰이더 리소스 로드 + MoveGuide reticle 빌드 확인
+	_check("water-shader-loads", ResourceLoader.exists(Board.WATER_SHADER) and load(Board.WATER_SHADER) != null)
+	var mg := MoveGuide.new()
+	add_child(mg)
+	_check("moveguide-builds", mg.get_child_count() == 4)
+	mg.free()
+
 	# 영웅 로스터 데이터: 3명, 포트레이트는 빈값이거나 실제 존재, 역할 아이콘은 정의된 셋 중 하나
 	var roster_ok := HeroRoster.all().size() == 3
 	for h in HeroRoster.all():

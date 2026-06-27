@@ -53,6 +53,11 @@ func _spawn_actors() -> void:
 	_player = Player.new()
 	add_child(_player)
 
+	# 발밑 이동 가이드 reticle(시각 전용, 플레이어를 따라간다).
+	var guide := MoveGuide.new()
+	add_child(guide)
+	guide.attach(_player)
+
 	_spawn_companions()
 
 	_hud.set_health(_grail.hp, _grail.max_hp)  # 초기값
@@ -127,21 +132,41 @@ func _build_environment() -> void:
 	sky.sky_material = sky_mat
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 0.7
-	env.ambient_light_energy = 1.1
-	# 살짝 따뜻한 톤맵·약한 블룸으로 발광 포탈/성배가 빛나 보이게.
+	env.ambient_light_sky_contribution = 0.65
+	env.ambient_light_energy = 1.4  # 그늘면이 검게 죽지 않게(동료 glb 포함) 채움 밝기 상향
+	# 따뜻한 톤맵 + 채도·밝기 보정 + 강한 블룸으로 mokup의 채도 높은 러시 톤과 발광 강조.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 1.05
+	env.adjustment_enabled = true
+	env.adjustment_brightness = 1.03
+	env.adjustment_contrast = 1.06
+	env.adjustment_saturation = 1.16  # mokup의 쨍한 채도
 	env.glow_enabled = true
-	env.glow_intensity = 0.3
+	env.glow_intensity = 0.55
+	env.glow_strength = 1.1
+	env.glow_bloom = 0.12
+	env.glow_hdr_threshold = 1.0
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 	we.environment = env
 	add_child(we)
 
+	# 주광(따뜻한 한낮 태양) — 그림자는 너무 진하지 않게.
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true
-	sun.light_energy = 1.3
-	sun.light_color = Color(1.0, 0.96, 0.86)
-	sun.rotation_degrees = Vector3(-50, -40, 0)
+	sun.light_energy = 1.35
+	sun.light_color = Color(1.0, 0.95, 0.83)
+	sun.shadow_opacity = 0.72  # mokup의 부드러운 접지 그림자
+	sun.shadow_blur = 1.4
+	sun.rotation_degrees = Vector3(-52, -40, 0)
 	add_child(sun)
+
+	# 채움광(반대편, 그림자 없음, 약간 차가운 하늘색) — 캐릭터/동료 glb의 그늘면을 살려준다.
+	var fill := DirectionalLight3D.new()
+	fill.shadow_enabled = false
+	fill.light_energy = 0.42
+	fill.light_color = Color(0.80, 0.88, 1.0)
+	fill.rotation_degrees = Vector3(-32, 142, 0)
+	add_child(fill)
 
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL

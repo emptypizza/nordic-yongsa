@@ -65,6 +65,42 @@ static func build_billboard(tex_path: String, world_size: float, fit: String = "
 	s.position.y = float(tex.get_height()) * s.pixel_size * 0.5
 	return s
 
+# 발밑 블롭 그림자용 부드러운 원형 알파 텍스처(1회 생성·캐시). 빌보드 캐릭터는 실제 그림자를
+# 안 드리우므로 접지감을 위해 바닥에 깔 반투명 검은 원판을 만든다.
+static var _blob_tex: Texture2D
+
+static func _blob_texture() -> Texture2D:
+	if _blob_tex != null:
+		return _blob_tex
+	var size := 64
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var c := size * 0.5
+	for y in size:
+		for x in size:
+			var d := Vector2(x - c, y - c).length() / c  # 0(중심)~~1.41(모서리)
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			a = a * a  # 가장자리 부드럽게
+			img.set_pixel(x, y, Color(0, 0, 0, a * 0.5))
+	_blob_tex = ImageTexture.create_from_image(img)
+	return _blob_tex
+
+# 발밑 블롭 그림자(바닥에 평평히 눕는 반투명 검은 원판). radius=월드 반경.
+# 호출부가 캐릭터의 루트(hop/scale 안 받는 노드)에 add_child 해야 그림자가 바닥에 머문다.
+static func make_blob_shadow(radius: float = 0.42) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var q := PlaneMesh.new()      # PlaneMesh 기본 법선 +Y → 바닥에 평평.
+	q.size = Vector2(radius * 2.0, radius * 1.6)  # 살짝 타원(원근감).
+	mi.mesh = q
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = _blob_texture()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED  # 바닥 데칼이라 깊이 미기록(z-fight 방지).
+	mi.material_override = m
+	mi.position.y = 0.03
+	return mi
+
 # 루프 재생: names 중 처음 존재하는 클립을 LOOP로 재생. 없으면 첫 클립. 반환=재생한 이름.
 static func play_loop(ap: AnimationPlayer, names: Array) -> String:
 	for n in names:
