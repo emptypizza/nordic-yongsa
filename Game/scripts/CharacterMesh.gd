@@ -49,9 +49,7 @@ static func build(glb_path: String, target_height: float, idle_names: Array = DE
 # 밑면이 바닥(y=0)에 닿도록 position.y 자동 설정(호출부가 덮어쓸 수 있음).
 # 텍스처 없으면 null 반환 → 호출부가 프리미티브로 폴백.
 static func build_billboard(tex_path: String, world_size: float, fit: String = "height") -> Sprite3D:
-	if not ResourceLoader.exists(tex_path):
-		return null
-	var tex: Texture2D = load(tex_path)
+	var tex := _load_billboard_texture(tex_path)
 	if tex == null:
 		return null
 	var s := Sprite3D.new()
@@ -64,6 +62,20 @@ static func build_billboard(tex_path: String, world_size: float, fit: String = "
 	s.pixel_size = world_size / maxf(denom, 1.0)
 	s.position.y = float(tex.get_height()) * s.pixel_size * 0.5
 	return s
+
+# 빌보드 텍스처 로드. 1순위: 임포트된 리소스(익스포트 빌드·에디터 정상 경로).
+# 2순위: 아직 임포트 안 된 dev/headless 체크아웃에서 원본 PNG를 디스크에서 직접 읽는다
+# → 주인공(은빛 도토) 등 빌보드가 import 전에도 항상 뜨고 glb로 폴백하지 않는다.
+# (익스포트 빌드에선 항상 1순위가 잡히므로 2순위 코드는 실행되지 않는다.)
+static func _load_billboard_texture(tex_path: String) -> Texture2D:
+	if ResourceLoader.exists(tex_path):
+		var res = load(tex_path)
+		if res is Texture2D:
+			return res
+	var img := Image.new()
+	if img.load(tex_path) == OK:
+		return ImageTexture.create_from_image(img)
+	return null
 
 # 발밑 블롭 그림자용 부드러운 원형 알파 텍스처(1회 생성·캐시). 빌보드 캐릭터는 실제 그림자를
 # 안 드리우므로 접지감을 위해 바닥에 깔 반투명 검은 원판을 만든다.
